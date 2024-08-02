@@ -132,3 +132,9 @@ dmypy.json
 data/
 results/
 results_scaling/
+results_paper/
+visualization/animations/
+#custom ignore
+*.mp4
+*.pt
+*.png

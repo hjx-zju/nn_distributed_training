@@ -1,6 +1,6 @@
 experiment:
-  name: "dist_online_dense_PAPER"
-  output_metadir: "../results/"
+  name: "dist_online_dense_test_sonata"
+  output_metadir: "../results_paper/"
   writeout: True
   use_cuda: True
   seed: 0
@@ -24,16 +24,50 @@ experiment:
     shape: [2, 256, 64, 64, 64, 1]
     scale: 0.05
   individual_training:
-    train_solo: True
+    train_solo: False
     optimizer: "adam"
     lr: 0.001
-    epochs: 1
+    epochs: 10
     train_batch_size: 10000
     val_batch_size: 10000
     verbose: True
 problem_configs:
-  problem1:
-    problem_name: "dinno_log"
+  # problem1:
+  #   problem_name: "dinno"
+  #   train_batch_size: 12500
+  #   val_batch_size: 10000
+  #   comm_radius: 1500.0
+  #   verbose_evals: True
+  #   dynamic_graph: True
+  #   save_models: True
+  #   metrics:
+  #     - "forward_pass_count"
+  #     - "train_loss_moving_average"
+  #     - "validation_loss"
+  #     - "consensus_error"
+  #     - "mesh_grid_density"
+  #     - "current_epoch"
+  #   metrics_config:
+  #     evaluate_frequency: 20
+  #     tloss_decay: 0.2
+  #     mesh_only_at_end: True
+  #   optimizer_config:
+  #     alg_name: "dinno"
+  #     rho_init: 0.3
+  #     rho_scaling: 1.0004
+  #     outer_iterations: 4000
+  #     primal_iterations: 1
+  #     primal_optimizer: "adam"
+  #     persistant_primal_opt: True
+  #     primal_lr_start: 0.001
+  #     primal_lr_finish: 0.0001
+  #     lr_decay_type: "log"
+  #     profile: false
+  #     quantize: 32
+  
+    
+  problem2:
+    problem_name: "sonata"
     train_batch_size: 12500
     val_batch_size: 10000
     comm_radius: 1500.0
@@ -47,69 +81,81 @@ problem_configs:
       - "consensus_error"
       - "mesh_grid_density"
       - "current_epoch"
+      # - "current_position"
+      # - "current_graph"
     metrics_config:
       evaluate_frequency: 20
       tloss_decay: 0.2
-      mesh_only_at_end: True
+      mesh_only_at_end: False
     optimizer_config:
-      alg_name: "dinno"
-      rho_init: 0.3
-      rho_scaling: 1.0004
+      alg_name: "sonata"
+      alpha: 1
+      tau: 0.0001
+      use_prox: False
       outer_iterations: 4000
-      primal_iterations: 5
-      primal_optimizer: "adam"
+      primal_iterations: 1
+      init_grads: True
+      primal_optimizer: "sgd"
       persistant_primal_opt: False
       primal_lr_start: 0.001
       primal_lr_finish: 0.0001
       lr_decay_type: "log"
       profile: false
-  problem2:
-    problem_name: "dsgt"
-    train_batch_size: 20000
-    val_batch_size: 10000
-    comm_radius: 1500.0
-    verbose_evals: True
-    dynamic_graph: True
-    save_models: True
-    metrics:
-      - "forward_pass_count"
-      - "train_loss_moving_average"
-      - "validation_loss"
-      - "consensus_error"
-      - "mesh_grid_density"
-      - "current_epoch"
-    metrics_config:
-      evaluate_frequency: 20
-      tloss_decay: 0.2
-      mesh_only_at_end: True
-    optimizer_config:
-      alg_name: "dsgt"
-      alpha: 0.001
-      outer_iterations: 4000
-      init_grads: True
-      profile: false
-  problem3:
-    problem_name: "dsgd"
-    train_batch_size: 20000
-    val_batch_size: 10000
-    comm_radius: 1500.0
-    verbose_evals: True
-    dynamic_graph: True
-    save_models: True
-    metrics:
-      - "forward_pass_count"
-      - "train_loss_moving_average"
-      - "validation_loss"
-      - "consensus_error"
-      - "mesh_grid_density"
-      - "current_epoch"
-    metrics_config:
-      evaluate_frequency: 20
-      tloss_decay: 0.2
-      mesh_only_at_end: True
-    optimizer_config:
-      alg_name: "dsgd"
-      alpha0: 0.001
-      mu: 0.001
-      outer_iterations: 4000
-      profile: false
+      quantize: 32
+  
+  # problem3:
+  #   problem_name: "dsgt"
+  #   train_batch_size: 12500
+  #   val_batch_size: 10000
+  #   comm_radius: 1500.0
+  #   verbose_evals: True
+  #   dynamic_graph: True
+  #   save_models: True
+  #   metrics:
+  #     - "forward_pass_count"
+  #     - "train_loss_moving_average"
+  #     - "validation_loss"
+  #     - "consensus_error"
+  #     - "mesh_grid_density"
+  #     - "current_epoch"
+  #   metrics_config:
+  #     evaluate_frequency: 20
+  #     tloss_decay: 0.2
+  #     mesh_only_at_end: True
+  #   optimizer_config:
+  #     alg_name: "dsgt"
+  #     alpha: 0.001
+  #     outer_iterations: 4000
+  #     init_grads: True
+  #     profile: false
+  #     quantize: 32
+  # problem4:
+  #   problem_name: "kgt"
+  #   train_batch_size: 12500
+  #   val_batch_size: 10000
+  #   comm_radius: 1500.0
+  #   verbose_evals: True
+  #   dynamic_graph: True
+  #   save_models: True
+  #   metrics:
+  #     - "forward_pass_count"
+  #     - "train_loss_moving_average"
+  #     - "validation_loss"
+  #     - "consensus_error"
+  #     - "mesh_grid_density"
+  #     - "current_epoch"
+  #   metrics_config:
+  #     evaluate_frequency: 20
+  #     tloss_decay: 0.2
+  #     mesh_only_at_end: True
+  #   optimizer_config:
+  #     alg_name: "kgt"
+  #     outer_iterations: 4000
+  #     alpha: 1
+  #     t_local: 1
+  #     gamma: 0.001
+  #     lr_start: 0.001
+  #     lr_end: 0.0001
+  #     init_grads: False
+  #     profile: false
+  #     quantize: 32

@@ -14,6 +14,9 @@ from problems.dist_mnist_problem import DistMNISTProblem
 from optimizers.dinno import DiNNO
 from optimizers.dsgd import DSGD
 from optimizers.dsgt import DSGT
+from optimizers.sonata import SONATA 
+from optimizers.kgt import KGT
+
 from utils import graph_generation
 
 torch.set_default_tensor_type(torch.DoubleTensor)
@@ -78,14 +81,15 @@ def experiment(yaml_pth):
     scale_conf = exp_conf["scaling"]
     if scale_conf["const"] == "fiedler":
         # Ns = list(range(scale_conf["min_scale"], scale_conf["max_scale"]))
-        Ns = torch.linspace(
-            scale_conf["min_N"],
-            scale_conf["max_N"],
-            scale_conf["num_trials"],
-        )
-        Ns = Ns.int().tolist()
-
+        # Ns = torch.linspace(
+        #     scale_conf["min_N"],
+        #     scale_conf["max_N"],
+        #     scale_conf["num_trials"],
+        # )
+        # Ns = Ns.int().tolist()
+        Ns=[10,20,50,100]
         graphs = []
+         # Create communication graph
         for N in Ns:
             G = graph_generation.disk_with_fied(N, scale_conf["target_fied"])
             graphs.append(G)
@@ -106,73 +110,81 @@ def experiment(yaml_pth):
 
     print("Graph generation successful!")
 
-    prob_conf = conf_dict["problem"]
-    for (trial, graph) in enumerate(graphs):
-        N = len(graph.nodes)
+    prob_confs = conf_dict["problem_configs"]
+    for prob_key in prob_confs:
+        prob_conf = prob_confs[prob_key]
+        alg=prob_conf["problem_name"]
+        for (trial, graph) in enumerate(graphs):
+            N = len(graph.nodes)
 
-        file_name = str(trial)
-        prob_conf["problem_name"] = file_name
+            file_name = alg+"_"+str(trial)
+            prob_conf["problem_name"] = file_name
 
-        if exp_conf["writeout"]:
-            # Save the graph for future visualization
-            nx.write_gpickle(
-                graph, os.path.join(output_dir, file_name + ".gpickle")
+            if exp_conf["writeout"]:
+                # Save the graph for future visualization
+                nx.write_gpickle(
+                    graph, os.path.join(output_dir, file_name + ".gpickle")
+                )
+
+            train_subsets = []
+            order = torch.argsort(joint_train_set.targets)
+            node_data_idxs = order.chunk(N)
+            for idxs in node_data_idxs:
+                ds_size = len(idxs)
+                train_subsets.append(
+                    torch.utils.data.Subset(joint_train_set, idxs)
+                )
+
+            prob = DistMNISTProblem(
+                graph,
+                base_model,
+                base_loss,
+                train_subsets,
+                val_set,
+                device,
+                prob_conf,
             )
 
-        train_subsets = []
-        order = torch.argsort(joint_train_set.targets)
-        node_data_idxs = order.chunk(N)
-        for idxs in node_data_idxs:
-            ds_size = len(idxs)
-            train_subsets.append(
-                torch.utils.data.Subset(joint_train_set, idxs)
-            )
+            opt_conf = prob_conf["optimizer_config"]
 
-        prob = DistMNISTProblem(
-            graph,
-            base_model,
-            base_loss,
-            train_subsets,
-            val_set,
-            device,
-            prob_conf,
-        )
+            if opt_conf["alg_name"] == "dinno":
+                dopt = DiNNO(prob, device, opt_conf)
+            elif opt_conf["alg_name"] == "dsgd":
+                dopt = DSGD(prob, device, opt_conf)
+            elif opt_conf["alg_name"] == "dsgt":
+                dopt = DSGT(prob, device, opt_conf)
+            elif opt_conf["alg_name"] == "sonata":
+                dopt = SONATA(prob, device, opt_conf)
+            elif opt_conf["alg_name"] =="kgt":
+                dopt = KGT(prob, device, opt_conf)
+            else:
+                raise NameError("Unknown distributed opt algorithm.")
 
-        opt_conf = prob_conf["optimizer_config"]
+            print("-------------------------------------------------------")
+            print("-------------------------------------------------------")
+            print("Running problem: ", trial, " / ", len(graphs))
+            print("problem_name: ", file_name)
+            print("Num Nodes: ", N)
+            print("DS size: ", ds_size)
+            if opt_conf["profile"]:
+                with torch.profiler.profile(
+                    schedule=torch.profiler.schedule(
+                        wait=1, warmup=1, active=3, repeat=3
+                    ),
+                    on_trace_ready=torch.profiler.tensorboard_trace_handler(
+                        os.path.join(
+                            output_dir, prob_conf["problem_name"] + "opt_profile"
+                        )
+                    ),
+                    record_shapes=True,
+                    with_stack=True,
+                ) as prof:
+                    dopt.train(profiler=prof)
+            else:
+                dopt.train()
 
-        if opt_conf["alg_name"] == "dinno":
-            dopt = DiNNO(prob, device, opt_conf)
-        elif opt_conf["alg_name"] == "dsgd":
-            dopt = DSGD(prob, device, opt_conf)
-        elif opt_conf["alg_name"] == "dsgt":
-            dopt = DSGT(prob, device, opt_conf)
-        else:
-            raise NameError("Unknown distributed opt algorithm.")
-
-        print("-------------------------------------------------------")
-        print("-------------------------------------------------------")
-        print("Running problem: ", trial, " / ", len(graphs))
-        print("Num Nodes: ", N)
-        print("DS size: ", ds_size)
-        if opt_conf["profile"]:
-            with torch.profiler.profile(
-                schedule=torch.profiler.schedule(
-                    wait=1, warmup=1, active=3, repeat=3
-                ),
-                on_trace_ready=torch.profiler.tensorboard_trace_handler(
-                    os.path.join(
-                        output_dir, prob_conf["problem_name"] + "opt_profile"
-                    )
-                ),
-                record_shapes=True,
-                with_stack=True,
-            ) as prof:
-                dopt.train(profiler=prof)
-        else:
-            dopt.train()
-
-        if exp_conf["writeout"]:
-            prob.save_metrics(output_dir)
+            if exp_conf["writeout"]:
+                prob.save_metrics(output_dir)
 
     return
 

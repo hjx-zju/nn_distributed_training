@@ -1,5 +1,6 @@
+import torchvision
 import torch.nn as nn
-
+from torchsummary import summary
 
 class MNISTConvNet(nn.Module):
     """Implements a basic convolutional neural network with one
@@ -26,3 +27,25 @@ class MNISTConvNet(nn.Module):
 
     def forward(self, x):
         return self.seq(x)
+class CIFARConvNet(nn.Module):
+    #implement resnet18
+    def __init__(self):
+        super().__init__()
+        self.resnet18 = torchvision.models.resnet18(pretrained=False)
+        num_ftrs = self.resnet18.fc.in_features
+        self.resnet18.fc = nn.Linear(num_ftrs, 10) 
+
+if __name__ == "__main__":
+    # Test MNISTConvNet
+    model = MNISTConvNet(3, 5, 64)
+    model.to("cuda")
+    # print summary
+    summary(model,(1,28,28))
+    
+
+    # Test CIFARConvNet
+    # model = CIFARConvNet()
+    # model.to("cuda")
+    # # print summary
+    # summary(model,(3,224,224))
+    

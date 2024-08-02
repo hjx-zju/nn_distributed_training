@@ -14,6 +14,11 @@ from problems.dist_mnist_problem import DistMNISTProblem
 from optimizers.dinno import DiNNO
 from optimizers.dsgd import DSGD
 from optimizers.dsgt import DSGT
+from optimizers.sonata import SONATA 
+from optimizers.randcom import RANDCOM
+from optimizers.lt_admm import LT_ADMM
+from optimizers.flexgt import FLEXGT
+from optimizers.kgt import KGT
 from utils import graph_generation
 
 torch.set_default_tensor_type(torch.DoubleTensor)
@@ -88,8 +93,9 @@ def experiment(yaml_pth):
 
     # Create communication graph
     graph_conf = exp_conf["graph"]
-    N, graph = graph_generation.generate_from_conf(graph_conf)
-
+    # N, graph = graph_generation.generate_from_conf(graph_conf)
+    N=10
+    graph= graph_generation.disk_with_fied(10, 1.0)
     if exp_conf["writeout"]:
         # Save the graph for future visualization
         nx.write_gpickle(graph, os.path.join(output_dir, "graph.gpickle"))
@@ -181,7 +187,7 @@ def experiment(yaml_pth):
     for prob_key in prob_confs:
         prob_conf = prob_confs[prob_key]
         opt_conf = prob_conf["optimizer_config"]
-
+        
         prob = DistMNISTProblem(
             graph,
             base_model,
@@ -198,6 +204,16 @@ def experiment(yaml_pth):
             dopt = DSGD(prob, device, opt_conf)
         elif opt_conf["alg_name"] == "dsgt":
             dopt = DSGT(prob, device, opt_conf)
+        elif opt_conf["alg_name"] == "sonata":
+            dopt = SONATA(prob, device, opt_conf)
+        elif opt_conf["alg_name"] =="lt_admm":
+            dopt = LT_ADMM(prob, device, opt_conf)
+        elif opt_conf["alg_name"] =="randcom":
+            dopt = RANDCOM(prob, device, opt_conf)
+        elif opt_conf["alg_name"] =="flexgt":
+            dopt = FLEXGT(prob, device, opt_conf)
+        elif opt_conf["alg_name"] =="kgt":
+            dopt = KGT(prob, device, opt_conf)
         else:
             raise NameError("Unknown distributed opt algorithm.")
 

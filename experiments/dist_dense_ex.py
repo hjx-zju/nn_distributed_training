@@ -1,5 +1,6 @@
 import os
 import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 from datetime import datetime
 from shutil import copyfile
 import glob
@@ -244,7 +245,7 @@ def experiment(yaml_pth):
             torch.save(
                 solo_results, os.path.join(output_dir, "solo_results.pt")
             )
-
+    
     # Run each problem
     prob_confs = conf_dict["problem_configs"]
 

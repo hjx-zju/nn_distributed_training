@@ -1,4 +1,6 @@
 import torch
+import matplotlib
+matplotlib.use('TkAgg')  # 在导入plt之前设置GUI后端
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.interpolate as interp

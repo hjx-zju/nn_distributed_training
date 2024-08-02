@@ -1,5 +1,5 @@
 experiment:
-  name: "dist_mnist_PAPER"
+  name: "dist_mnist_dsgt_Quant"
   data_dir: "../data/"
   output_metadir: "../results/"
   use_cuda: true
@@ -24,31 +24,33 @@ experiment:
     val_batch_size: 100
     verbose: true
 problem_configs:
-  problem1:
-    problem_name: "dinno"
-    train_batch_size: 64
-    val_batch_size: 128
-    verbose_evals: true
-    metrics:
-      - "forward_pass_count"
-      - "validation_loss"
-      - "consensus_error"
-      - "top1_accuracy"
-      - "current_epoch"
-    metrics_config:
-      evaluate_frequency: 20
-    optimizer_config:
-      alg_name: "dinno"
-      rho_init: 0.5
-      rho_scaling: 1.0003
-      outer_iterations: 2000
-      primal_iterations: 2
-      primal_optimizer: "adam"
-      persistant_primal_opt: false
-      primal_lr_start: 0.005
-      primal_lr_finish: 0.0005
-      lr_decay_type: "log"
-      profile: false
+  # problem1:
+  #   problem_name: "dinno"
+  #   train_batch_size: 64
+  #   val_batch_size: 128
+  #   verbose_evals: true
+  #   metrics:
+  #     - "forward_pass_count"
+  #     - "validation_loss"
+  #     - "consensus_error"
+  #     - "top1_accuracy"
+  #     - "current_epoch"
+  #   metrics_config:
+  #     evaluate_frequency: 20
+  #   optimizer_config:
+  #     alg_name: "dinno"
+  #     rho_init: 0.5
+  #     rho_scaling: 1.0003
+  #     outer_iterations: 2000
+  #     primal_iterations: 2
+  #     primal_optimizer: "adam"
+  #     persistant_primal_opt: false
+  #     primal_lr_start: 0.005
+  #     primal_lr_finish: 0.0005
+  #     lr_decay_type: "log"
+  #     profile: false
+  #     quantize: 16
+
   problem2:
     problem_name: "dsgt"
     train_batch_size: 64
@@ -68,22 +70,79 @@ problem_configs:
       alpha: 0.005
       init_grads: True
       profile: false
-  problem3:
-    problem_name: "dsgd"
-    train_batch_size: 64
-    val_batch_size: 128
-    verbose_evals: true
-    metrics:
-      - "forward_pass_count"
-      - "validation_loss"
-      - "consensus_error"
-      - "top1_accuracy"
-      - "current_epoch"
-    metrics_config:
-      evaluate_frequency: 20
-    optimizer_config:
-      alg_name: "dsgd"
-      outer_iterations: 2000
-      alpha0: 0.005
-      mu: 0.001
-      profile: false
+      quantize: 16
+
+  # problem3:
+  #   problem_name: "sonata"
+  #   train_batch_size: 64
+  #   val_batch_size: 128
+  #   verbose_evals: true
+  #   metrics:
+  #     - "forward_pass_count"
+  #     - "validation_loss"
+  #     - "consensus_error"
+  #     - "top1_accuracy"
+  #     - "current_epoch"
+  #   metrics_config:
+  #     evaluate_frequency: 20
+  #   optimizer_config:
+  #     alg_name: "sonata"
+  #     alpha: 1
+  #     tau: 0.1
+  #     use_prox: False
+  #     outer_iterations: 2000
+  #     primal_iterations: 2
+  #     init_grads: True
+  #     primal_optimizer: "adam"
+  #     persistant_primal_opt: false
+  #     primal_lr_start: 0.005
+  #     primal_lr_finish: 0.0005
+  #     lr_decay_type: "log"
+  #     profile: false
+  #     quantize: 16
+
+  # problem4:
+  #   problem_name: "kgt"
+  #   train_batch_size: 64
+  #   val_batch_size: 128
+  #   verbose_evals: true
+  #   metrics:
+  #     - "forward_pass_count"
+  #     - "validation_loss"
+  #     - "consensus_error"
+  #     - "top1_accuracy"
+  #     - "current_epoch"
+  #   metrics_config:
+  #     evaluate_frequency: 20
+  #   optimizer_config:
+  #     alg_name: "kgt"
+  #     outer_iterations: 2000
+  #     alpha: 1
+  #     t_local: 5
+  #     gamma: 0.005
+  #     lr_start: 0.005
+  #     lr_end: 0.0001
+  #     init_grads: False
+  #     profile: false
+  #     quantize: 16
+
+
+  # problem3:
+  #   problem_name: "dsgd"
+  #   train_batch_size: 64
+  #   val_batch_size: 128
+  #   verbose_evals: true
+  #   metrics:
+  #     - "forward_pass_count"
+  #     - "validation_loss"
+  #     - "consensus_error"
+  #     - "top1_accuracy"
+  #     - "current_epoch"
+  #   metrics_config:
+  #     evaluate_frequency: 20
+  #   optimizer_config:
+  #     alg_name: "dsgd"
+  #     outer_iterations: 2000
+  #     alpha0: 0.005
+  #     mu: 0.001
+  #     profile: false

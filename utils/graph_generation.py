@@ -104,6 +104,10 @@ def generate_from_conf(graph_conf):
     return N, graph
 
 
+def get_Wa(W,gamma):
+    N = W.shape[0]
+    Wa = torch.eye(N) -1/2/gamma*(torch.eye(N)-W)
+    return Wa
 def get_metropolis(graph):
     N = graph.number_of_nodes()
     W = torch.zeros((N, N))

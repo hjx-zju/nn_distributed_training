@@ -1,5 +1,6 @@
 import os
 import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 from datetime import datetime
 from shutil import copyfile
 import glob
@@ -13,8 +14,12 @@ import numpy as np
 from models.fourier_nn import FourierNet
 from problems.dist_online_dense_problem import DistOnlineDensityProblem
 from optimizers.dinno import DiNNO
-from optimizers.dsgt import DSGT
 from optimizers.dsgd import DSGD
+from optimizers.dsgt import DSGT
+from optimizers.sonata import SONATA 
+from optimizers.randcom import RANDCOM
+from optimizers.lt_admm import LT_ADMM
+from optimizers.kgt import KGT
 from utils import graph_generation
 from floorplans.lidar.lidar import (
     Lidar2D,
@@ -228,7 +233,6 @@ def experiment(yaml_pth):
             torch.save(
                 solo_results, os.path.join(output_dir, "solo_results.pt")
             )
-
     # Run each problem
     prob_confs = conf_dict["problem_configs"]
 
@@ -251,6 +255,15 @@ def experiment(yaml_pth):
             dopt = DSGT(prob, device, opt_conf)
         elif opt_conf["alg_name"] == "dsgd":
             dopt = DSGD(prob, device, opt_conf)
+        elif opt_conf["alg_name"] == "sonata":
+            dopt = SONATA(prob, device, opt_conf)
+        elif opt_conf["alg_name"] =="lt_admm":
+            dopt = LT_ADMM(prob, device, opt_conf)
+        elif opt_conf["alg_name"] =="randcom":
+            dopt = RANDCOM(prob, device, opt_conf)
+        elif   opt_conf["alg_name"] =="kgt":
+            dopt = KGT(prob, device, opt_conf)
+        
         else:
             raise NameError("Unknown distributed opt algorithm.")
 
