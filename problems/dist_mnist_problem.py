@@ -125,8 +125,9 @@ class DistMNISTProblem:
                 loss += self.base_loss(yh, y).item()
                 pred = yh.argmax(dim=1, keepdim=True)
                 correct_vec = pred.eq(y.view_as(pred))
+                
                 correct += correct_vec.sum().item()
-                correct_list.append(correct_vec)
+                correct_list.append(pred)
             avg_loss = loss / len(self.val_loader.dataset)
             acc = correct / len(self.val_loader.dataset)
             return avg_loss, acc, torch.vstack(correct_list)

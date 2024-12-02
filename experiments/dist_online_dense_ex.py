@@ -63,33 +63,29 @@ def train_solo(model, loss, train_set, val_set, device, conf):
         opt = torch.optim.AdamW(model.parameters(), lr=conf["lr"])
     else:
         raise NameError("Unknown individual optimizer.")
-
-    for _ in range(conf["epochs"]):
+    mesh_list=[]
+    for cnt in range(conf["epochs"]):
         for batch in trainloader:
             opt.zero_grad()
             pd = model.forward(batch[0].to(device))
             l = loss(pd.squeeze(), batch[1].to(device))
             l.backward()
             opt.step()
+        if cnt%10==0:
+            with torch.no_grad():
+                X, Y = np.meshgrid(val_set.lidar.xs, val_set.lidar.ys)
+                xlocs = X[::8, ::8].reshape(-1, 1)
+                ylocs = Y[::8, ::8].reshape(-1, 1)
+                mesh_poses = np.hstack((xlocs, ylocs))
+                mesh_inputs = torch.Tensor(mesh_poses)
+                mesh_inputs = mesh_inputs.to(device)
 
-    with torch.no_grad():
-        vloss = 0.0
-        for batch in valloader:
-            pd = model.forward(batch[0].to(device))
-            vloss += loss(pd.squeeze(), batch[1].to(device)).data.detach()
-
-        X, Y = np.meshgrid(val_set.lidar.xs, val_set.lidar.ys)
-        xlocs = X[::8, ::8].reshape(-1, 1)
-        ylocs = Y[::8, ::8].reshape(-1, 1)
-        mesh_poses = np.hstack((xlocs, ylocs))
-        mesh_inputs = torch.Tensor(mesh_poses)
-        mesh_inputs = mesh_inputs.to(device)
-
-        mesh_dense = model.forward(mesh_inputs)
-
+                mesh_dense = model.forward(mesh_inputs)
+                mesh_list.append(mesh_dense)
+    vloss=0
     return {
         "validation_loss": vloss,
-        "mesh_grid_density": mesh_dense,
+        "mesh_list": mesh_list,
         "mesh_grid": mesh_inputs,
     }
 

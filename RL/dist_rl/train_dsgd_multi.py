@@ -32,7 +32,7 @@ def main():
             "clip": 0.2,
             "render": False,
             "render_every_i": 1,
-            "save_freq": 10,
+            "save_freq": 4200,
         }
         env.reset()
         obs_dim = env.observation_spaces["adversary_0"].shape[0]

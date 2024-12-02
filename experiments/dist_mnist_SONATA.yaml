@@ -1,5 +1,5 @@
 experiment:
-  name: "dist_mnist_quant_sonata_16"
+  name: "dist_mnist_sonata_mu"
   data_dir: "../data/"
   output_metadir: "../results/"
   use_cuda: true
@@ -40,18 +40,18 @@ problem_configs:
     optimizer_config:
       alg_name: "sonata"
       alpha: 1
-      tau: 0.1
+      tau: 0.001
       use_prox: False
       outer_iterations: 2000
       primal_iterations: 2
       init_grads: True
       primal_optimizer: "adam"
       persistant_primal_opt: false
-      primal_lr_start: 0.005
-      primal_lr_finish: 0.0005
+      primal_lr_start: 0.001
+      primal_lr_finish: 0.0001
       lr_decay_type: "log"
       profile: false
-      quantize: 16
+      quantize: 32
   # problem2:
   #   problem_name: "dinno"
   #   train_batch_size: 64

@@ -4,7 +4,7 @@ import copy
 import numpy as np
 
 
-class DSGTPPO:
+class KGTPPO:
     def __init__(self, ddl_problem, device, conf):
         self.pr = ddl_problem
         self.conf = conf
@@ -25,7 +25,9 @@ class DSGTPPO:
         self.ylists_actor = {
             i: copy.deepcopy(base_zeros_actor) for i in range(self.pr.N)
         }
-
+        self.clists_actor = {
+            i: copy.deepcopy(base_zeros_actor) for i in range(self.pr.N)
+        }
         # Get list of all critic parameter pointers
         self.plists_critic = {
             i: list(self.pr.critics[i].parameters()) for i in range(self.pr.N)
@@ -42,7 +44,9 @@ class DSGTPPO:
         self.ylists_critic = {
             i: copy.deepcopy(base_zeros_critic) for i in range(self.pr.N)
         }
-
+        self.clists_critic = {
+            i: copy.deepcopy(base_zeros_critic) for i in range(self.pr.N)
+        }
         # Training hyper params
         self.alpha_actor = conf["alpha_actor"]
         self.alpha_critic = conf["alpha_critic"]
@@ -61,33 +65,35 @@ class DSGTPPO:
         for i in range(self.pr.N):
             # This requires one rollout but no steps are taken yet
             actor_loss, critic_loss = self.pr.ev_ppo_loss(i)
-
             actor_loss.backward(retain_graph=True)
             torch.nn.utils.clip_grad_norm_(self.pr.actors[i].parameters(), 0.5)
             
             with torch.no_grad():
                 for p in range(self.num_params_actor):
                     self.ylists_actor[i][p] = (
-                        self.plists_actor[i][p].grad.detach().clone()
+                        -self.plists_actor[i][p].grad.detach().clone()
                     )
-                    self.glists_actor[i][p] = (
-                        self.plists_actor[i][p].grad.detach().clone()
-                    )
-                    self.plists_actor[i][p].grad.zero_()
-
             critic_loss.backward()
             torch.nn.utils.clip_grad_norm_(self.pr.critics[i].parameters(), 0.5)
             
             with torch.no_grad():
                 for p in range(self.num_params_critic):
                     self.ylists_critic[i][p] = (
-                        self.plists_critic[i][p].grad.detach().clone()
+                        -self.plists_critic[i][p].grad.detach().clone()
                     )
-                    self.glists_critic[i][p] = (
-                        self.plists_critic[i][p].grad.detach().clone()
+        for i in range(self.pr.N):
+            with torch.no_grad():
+                neighs = list(self.pr.graph.neighbors(i))
+                num_neighs = len(neighs) + 1
+                for p in range(self.num_params_actor):
+                    self.ylists_actor[i][p] += (
+                        self.plists_actor[i][p].grad.detach().clone() / num_neighs
                     )
-                    self.plists_critic[i][p].grad.zero_()
-
+                    for j in neighs:
+                        self.ylists_actor[i][p] += (
+                            self.plists_actor[j][p].grad.detach().clone() / num_neighs
+                        )
+       
         # Optimization loop
         k = 0
         avg_ep_rews = []
@@ -101,94 +107,71 @@ class DSGTPPO:
             # Iterate over the agents for communication step
             self.pr.split_rollout_marl()
             self.pr.update_advantage()
-            for _ in range(self.conf["n_updates_per_iteration"]):
-                for i in range(self.pr.N):
-                    neighs = list(self.pr.graph.neighbors(i))
-                    with torch.no_grad():
-                        # Update each parameter individually across all neighbors
-                        for p in range(self.num_params_actor):
-                            # Ego update
-                            self.plists_actor[i][p].multiply_(W[i, i])
-                            self.plists_actor[i][p].add_(
-                                -self.alpha_actor * self.ylists_actor[i][p]
-                            )
-                            # Neighbor updates
-                            for j in neighs:
-                                self.plists_actor[i][p].add_(
-                                    W[i, j] * self.plists_actor[j][p]
-                                )
-                        for p in range(self.num_params_critic):
-                            # Ego update
-                            self.plists_critic[i][p].multiply_(W[i, i])
-                            self.plists_critic[i][p].add_(
-                                -self.alpha_critic * self.ylists_critic[i][p]
-                            )
-                            # Neighbor updates
-                            for j in neighs:
-                                self.plists_critic[i][p].add_(
-                                    W[i, j] * self.plists_critic[j][p]
-                                )
-
-                # Compute the batch loss and update using the gradients
-                for i in range(self.pr.N):
-                    neighs = list(self.pr.graph.neighbors(i))
-                    # print(i, " neighs: ", neighs)
-
-                    # Compute PPO losses
+            bak_plists_actor = copy.deepcopy(self.plists_actor)
+            bak_plists_critic = copy.deepcopy(self.plists_critic)
+            for i in range(self.pr.N):
+                neighs = list(self.pr.graph.neighbors(i))
+                
+                for _ in range(self.conf["n_updates_per_iteration"]):
                     actor_loss, critic_loss = self.pr.ev_ppo_loss(i)
-
+                    self.pr.actors[i].zero_grad()
                     actor_loss.backward(retain_graph=True)
                     torch.nn.utils.clip_grad_norm_(self.pr.actors[i].parameters(), 0.5)
-                    # Locally update model with gradient
                     with torch.no_grad():
-                        ysum = 0.0
-                        gsum = 0.0
                         for p in range(self.num_params_actor):
-                            self.ylists_actor[i][p].multiply_(W[i, i])
-                            for j in neighs:
-                                self.ylists_actor[i][p].add_(
-                                    W[i, j] * self.ylists_actor[j][p]
-                                )
-
-                            self.ylists_actor[i][p].add_(
-                                self.plists_actor[i][p].grad
+                            self.plists_actor[i][p].add_(
+                                self.plists_actor[i][p].grad, alpha=-self.alpha_actor
                             )
-                            self.ylists_actor[i][p].add_(
-                                -1.0 * self.glists_actor[i][p]
+                            self.plists_actor[i][p].add_(
+                                self.clists_actor[i][p], alpha=-self.alpha_actor
                             )
-
-                            self.glists_actor[i][p] = (
-                                self.plists_actor[i][p].grad.detach().clone()
-                            )
-                            self.plists_actor[i][p].grad.zero_()
-
+                    self.pr.critics[i].zero_grad()
                     critic_loss.backward()
                     torch.nn.utils.clip_grad_norm_(self.pr.critics[i].parameters(), 0.5)
-                    #                    torch.nn.utils.clip_grad_norm_(
-                    #                        self.pr.critics[i].parameters(), 1000.0
-                    #                    )
-                    # Locally update model with gradient
+                    
                     with torch.no_grad():
-                        ysum = 0.0
-                        gsum = 0.0
                         for p in range(self.num_params_critic):
-                            self.ylists_critic[i][p].multiply_(W[i, i])
-                            for j in neighs:
-                                self.ylists_critic[i][p].add_(
-                                    W[i, j] * self.ylists_critic[j][p]
-                                )
+                            self.plists_critic[i][p].add_(
+                                self.plists_critic[i][p].grad, alpha=-self.alpha_critic
+                            )
+                            self.plists_critic[i][p].add_(
+                                self.clists_critic[i][p], alpha=-self.alpha_critic
+                            )
+            for i in range(self.pr.N):
+                with torch.no_grad():
+                    for p in range(self.num_params_actor):
+                        self.ylists_actor[i][p].zero_()
+                        self.ylists_actor[i][p].add_(
+                            bak_plists_actor[i][p], alpha=1 / self.conf["n_updates_per_iteration"] / self.alpha_actor
+                        )
+                        self.ylists_actor[i][p].add_(
+                            self.plists_actor[i][p], alpha=-1 / self.conf["n_updates_per_iteration"] / self.alpha_actor
+                        )
+                    for p in range(self.num_params_critic):
+                        self.ylists_critic[i][p].zero_()
+                        self.ylists_critic[i][p].add_(
+                            bak_plists_critic[i][p], alpha=1 / self.conf["n_updates_per_iteration"] / self.alpha_critic
+                        )
+                        self.ylists_critic[i][p].add_(
+                            self.plists_critic[i][p], alpha=-1 / self.conf["n_updates_per_iteration"] / self.alpha_critic
+                        )
+            
+            for i in range(self.pr.N):
+                neighs = list(self.pr.graph.neighbors(i))
+                with torch.no_grad():
+                    for p in range(self.num_params_actor):
+                        self.clists_actor[i][p].add_(self.ylists_actor[i][p], alpha=W[i, i]-1)
+                        self.plists_actor[i][p].set_(W[i, i] * (bak_plists_actor[i][p] - self.conf["n_updates_per_iteration"] * self.alpha_actor * self.ylists_actor[i][p]))
+                        for j in neighs:
+                            self.clists_actor[i][p].add_(self.ylists_actor[j][p], alpha=W[i, j])
+                            self.plists_actor[i][p].add_(bak_plists_actor[j][p] - self.conf["n_updates_per_iteration"] * self.alpha_actor * self.ylists_actor[j][p], alpha=W[i, j])
+                    for p in range(self.num_params_critic):
+                        self.clists_critic[i][p].add_(self.ylists_critic[i][p], alpha=W[i, i]-1)
+                        self.plists_critic[i][p].set_(W[i, i] * (bak_plists_critic[i][p] - self.conf["n_updates_per_iteration"] * self.alpha_critic * self.ylists_critic[i][p]))
+                        for j in neighs:
+                            self.clists_critic[i][p].add_(self.ylists_critic[j][p], alpha=W[i, j])
+                            self.plists_critic[i][p].add_(bak_plists_critic[j][p] - self.conf["n_updates_per_iteration"] * self.alpha_critic * self.ylists_critic[j][p], alpha=W[i, j])
 
-                            self.ylists_critic[i][p].add_(
-                                self.plists_critic[i][p].grad
-                            )
-                            self.ylists_critic[i][p].add_(
-                                -1.0 * self.glists_critic[i][p]
-                            )
-
-                            self.glists_critic[i][p] = (
-                                self.plists_critic[i][p].grad.detach().clone()
-                            )
-                            self.plists_critic[i][p].grad.zero_()
             avg_loss.append(
                 [
                     np.mean(
@@ -205,6 +188,11 @@ class DSGTPPO:
                     ),
                 ]
             )
+            if k % 10 == 0:
+                np.save(
+                    f'./trained/avg_loss_kgt_{self.conf["ID"]}.npy',
+                    np.asarray(avg_loss),
+                )
             avg_ep_rews.append(
                 np.mean(
                     [
@@ -249,7 +237,7 @@ class DSGTPPO:
                         "actor1": self.pr.actors[1].state_dict(),
                         "actor2": self.pr.actors[2].state_dict(),
                     },
-                    f'./results_dsgt/ppo_actors_tag_dsgt_{self.conf["ID"]}.pth',
+                    f'./trained/ppo_actors_tag_kgt_{self.conf["ID"]}.pth',
                 )
                 torch.save(
                     {
@@ -257,23 +245,19 @@ class DSGTPPO:
                         "critic1": self.pr.critics[1].state_dict(),
                         "critic2": self.pr.critics[2].state_dict(),
                     },
-                    f'./results_dsgt/ppo_critics_tag_dsgt_{self.conf["ID"]}.pth',
+                    f'./trained/ppo_critics_tag_kgt_{self.conf["ID"]}.pth',
                 )
 
                 # save plotting data
                 np.save(
-                    f'./results_dsgt/avg_ep_rews_dsgt_{self.conf["ID"]}.npy',
+                    f'./trained/avg_ep_rews_kgt_{self.conf["ID"]}.npy',
                     np.asarray(avg_ep_rews),
                 )
                 np.save(
-                    f'./results_dsgt/avg_loss_dsgt_{self.conf["ID"]}.npy',
-                    np.asarray(avg_loss),
-                )
-                np.save(
-                    f'./results_dsgt/timesteps_dsgt_{self.conf["ID"]}.npy',
+                    f'./trained/timesteps_kgt_{self.conf["ID"]}.npy',
                     np.asarray(timesteps),
                 )
-                np.savez(f'./results_dsgt/agreements_dsgt_{self.conf["ID"]}', agree_0=agree_0, agree_1=agree_1, agree_2=agree_2)
+                np.savez(f'./trained/agreements_kgt_{self.conf["ID"]}', agree_0=agree_0, agree_1=agree_1, agree_2=agree_2)
 
             k += 1
 

@@ -212,8 +212,11 @@ def create_gif(env, policy, seed):
     render = False
 
     # Rollout with the policy and environment, and log each episode's data
+    # actor_models = torch.load(
+    #     f"./results_/ppo_actors_tag_dinno_50_{policy}.pth"
+    # )
     actor_models = torch.load(
-        f"./trained/ppo_actors_tag_dinno_50_{policy}.pth"
+        f"./results_rl/ppo_actors_tag_dinno_666_{policy}.pth"
     )
     actor0 = model.FFReLUNet([obs_dim, 64, 64, 64, act_dim])
     actor1 = model.FFReLUNet([obs_dim, 64, 64, 64, act_dim])
@@ -311,7 +314,7 @@ def create_gif(env, policy, seed):
     # f = r"'./vids.mp4"
     # writervideo = animation.FFMpegWriter(fps=60)
     FFwriter = animation.FFMpegWriter(fps=30)
-    anim.save(f"vids/dinno_50_{policy}.mp4", writer=FFwriter)
+    anim.save(f"rl_vids/dinno_666_{policy}.mp4", writer=FFwriter)
     return
 
 
@@ -329,10 +332,15 @@ env = simple_tag_v2.env(
 seed = 12
 for policy in [
     0,
+    100,
     200,
+    300,
     400,
+    500,
     600,
+    700,
     800,
+    900,
     1000,
     1200,
     1400,
@@ -346,7 +354,7 @@ for policy in [
     3000,
     3200,
     3400,
-    3570,
+    3600,
 ]:
     create_gif(env, policy, seed)
 

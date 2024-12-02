@@ -123,10 +123,13 @@ class DiNNOPPO:
 
             opt_actor.zero_grad()
             aloss.backward(retain_graph=True)
+            torch.nn.utils.clip_grad_norm_(self.pr.actors[i].parameters(), 0.5)
+            
             opt_actor.step()
 
             opt_critic.zero_grad()
             closs.backward()
+            torch.nn.utils.clip_grad_norm_(self.pr.critics[i].parameters(), 0.5)
             opt_critic.step()
 
         return
@@ -135,6 +138,7 @@ class DiNNOPPO:
         # eval_every = self.pr.conf["metrics_config"]["evaluate_frequency"]
         k = 0
         avg_ep_rews = []
+        avg_loss = []
         timesteps = []
         agree_0 = np.array([])
         agree_1 = np.array([])
@@ -190,7 +194,13 @@ class DiNNOPPO:
                     ]
                 )
             )
+            avg_loss.append([np.mean( [losses.float().mean() for losses in self.pr.logger["actor_losses"]]), np.mean( [losses.float().mean() for losses in self.pr.logger["critic_losses"]])])
             timesteps.append(self.pr.logger["t_so_far"])
+            # if k%10==0:
+            #     np.save(
+            #             f'./results_rl/avg_loss{self.conf["ID"]}.npy',
+            #             np.asarray(avg_loss),
+            #         )
             # Compute and save agreements
             with torch.no_grad():
                 # The average distance from a single node to all of the other nodes in the problem
@@ -237,7 +247,7 @@ class DiNNOPPO:
                         "actor1": self.pr.actors[1].state_dict(),
                         "actor2": self.pr.actors[2].state_dict(),
                     },
-                    f'./trained/ppo_actors_tag_dinno_{self.conf["ID"]}_{k}.pth',
+                    f'./results_rl/ppo_actors_tag_dinno_{self.conf["ID"]}_{k}.pth',
                 )
                 torch.save(
                     {
@@ -245,20 +255,20 @@ class DiNNOPPO:
                         "critic1": self.pr.critics[1].state_dict(),
                         "critic2": self.pr.critics[2].state_dict(),
                     },
-                    f'./trained/ppo_critics_tag_dinno_{self.conf["ID"]}_{k}.pth',
+                    f'./results_rl/ppo_critics_tag_dinno_{self.conf["ID"]}_{k}.pth',
                 )
 
                 # save plotting data
                 np.save(
-                    f'./trained/avg_ep_rews_dinno_{self.conf["ID"]}.npy',
+                    f'./results_rl/avg_ep_rews_dinno_{self.conf["ID"]}.npy',
                     np.asarray(avg_ep_rews),
                 )
                 np.save(
-                    f'./trained/timesteps_dinno_{self.conf["ID"]}.npy',
+                    f'./results_rl/timesteps_dinno_{self.conf["ID"]}.npy',
                     np.asarray(timesteps),
                 )
                 np.savez(
-                    f'./trained/agreements_dinno_{self.conf["ID"]}',
+                    f'./results_rl/agreements_dinno_{self.conf["ID"]}',
                     agree_0=agree_0,
                     agree_1=agree_1,
                     agree_2=agree_2,

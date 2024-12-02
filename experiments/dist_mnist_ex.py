@@ -94,8 +94,8 @@ def experiment(yaml_pth):
     # Create communication graph
     graph_conf = exp_conf["graph"]
     # N, graph = graph_generation.generate_from_conf(graph_conf)
-    N=10
-    graph= graph_generation.disk_with_fied(10, 1.0)
+    # N=10
+    # graph= graph_generation.disk_with_fied(10, 1.0)
     if exp_conf["writeout"]:
         # Save the graph for future visualization
         nx.write_gpickle(graph, os.path.join(output_dir, "graph.gpickle"))

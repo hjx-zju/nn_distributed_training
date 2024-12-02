@@ -130,10 +130,15 @@ dmypy.json
 
 # Ignore dataset and results folders
 data/
+results_rl/
+results*/
 results/
 results_scaling/
 results_paper/
 visualization/animations/
+visualization/*.pdf
+RL/dist_rl/trained/
+RL/trained/
 #custom ignore
 *.mp4
 *.pt

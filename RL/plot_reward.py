@@ -59,11 +59,11 @@ ax0.plot(times_cadmm, np.mean(rewards_arr_cadmm, axis=0), c=cadmm_color, label="
 
 # DSGT
 ax0.plot(times_dsgt, np.mean(rewards_arr_dsgt, axis=0), c=dsgt_color, label="DSGT")
-# ax0.fill_between(times_dsgt, np.amax(rewards_arr_dsgt, axis=0), np.amin(rewards_arr_dsgt, axis=0), color=dsgt_color, alpha=0.5)
+ax0.fill_between(times_dsgt, np.amax(rewards_arr_dsgt, axis=0), np.amin(rewards_arr_dsgt, axis=0), color=dsgt_color, alpha=0.5)
 
 # DSGD
 ax0.plot(times_dsgd, np.mean(rewards_arr_dsgd, axis=0), c=dsgd_color, label="DSGD")
-# ax0.fill_between(times_dsgd, np.amax(rewards_arr_dsgd, axis=0), np.amin(rewards_arr_dsgd, axis=0), color=dsgd_color, alpha=0.5)
+ax0.fill_between(times_dsgd, np.amax(rewards_arr_dsgd, axis=0), np.amin(rewards_arr_dsgd, axis=0), color=dsgd_color, alpha=0.5)
 
 
 ax0.legend()

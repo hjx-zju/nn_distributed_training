@@ -1,12 +1,12 @@
 experiment:
-  name: "dist_online_dense_solo"
+  name: "dist_online_dense_sonata_iter"
   output_metadir: "../results_paper/"
   writeout: True
   use_cuda: True
   seed: 0
   data:
     data_dir: "../floorplans/32_data/"
-    waypoint_subdir: "minimal_overlap"
+    waypoint_subdir: "tight_paths"
     split_type: "trajectory"
     num_scans_in_window: 800
     num_beams: 20
@@ -24,50 +24,52 @@ experiment:
     shape: [2, 256, 64, 64, 64, 1]
     scale: 0.05
   individual_training:
-    train_solo: True
+    train_solo: False
     optimizer: "adam"
     lr: 0.001
-    epochs: 150
+    epochs: 10
     train_batch_size: 10000
     val_batch_size: 10000
     verbose: True
 problem_configs:
+  problem1:
+    problem_name: "sonata_iter1"
+    train_batch_size: 12500
+    val_batch_size: 10000
+    comm_radius: 1500.0
+    verbose_evals: True
+    dynamic_graph: True
+    save_models: True
+    metrics:
+      - "forward_pass_count"
+      - "train_loss_moving_average"
+      - "validation_loss"
+      - "consensus_error"
+      - "mesh_grid_density"
+      - "current_epoch"
+      - "current_position"
+      - "current_graph"
+    metrics_config:
+      evaluate_frequency: 80
+      tloss_decay: 0.2
+      mesh_only_at_end: False
+    optimizer_config:
+      alg_name: "sonata"
+      alpha: 1
+      tau: 0.001
+      use_prox: False
+      outer_iterations: 8000
+      primal_iterations: 1
+      init_grads: True
+      primal_optimizer: "adam"
+      persistant_primal_opt: False
+      primal_lr_start: 0.001
+      primal_lr_finish: 0.0001
+      lr_decay_type: "log"
+      profile: false
+      quantize: 32
   # problem1:
-  #   problem_name: "dinno"
-  #   train_batch_size: 12500
-  #   val_batch_size: 10000
-  #   comm_radius: 1500.0
-  #   verbose_evals: True
-  #   dynamic_graph: True
-  #   save_models: True
-  #   metrics:
-  #     - "forward_pass_count"
-  #     - "train_loss_moving_average"
-  #     - "validation_loss"
-  #     - "consensus_error"
-  #     - "mesh_grid_density"
-  #     - "current_epoch"
-  #   metrics_config:
-  #     evaluate_frequency: 20
-  #     tloss_decay: 0.2
-  #     mesh_only_at_end: True
-  #   optimizer_config:
-  #     alg_name: "dinno"
-  #     rho_init: 0.3
-  #     rho_scaling: 1.0004
-  #     outer_iterations: 4000
-  #     primal_iterations: 1
-  #     primal_optimizer: "adam"
-  #     persistant_primal_opt: False
-  #     primal_lr_start: 0.001
-  #     primal_lr_finish: 0.0001
-  #     lr_decay_type: "log"
-  #     profile: false
-  #     quantize: 32
-  
-    
-  # problem2:
-  #   problem_name: "sonata"
+  #   problem_name: "sonata_iter2"
   #   train_batch_size: 12500
   #   val_batch_size: 10000
   #   comm_radius: 1500.0
@@ -84,7 +86,7 @@ problem_configs:
   #     - "current_position"
   #     - "current_graph"
   #   metrics_config:
-  #     evaluate_frequency: 20
+  #     evaluate_frequency: 40
   #     tloss_decay: 0.2
   #     mesh_only_at_end: False
   #   optimizer_config:
@@ -92,8 +94,8 @@ problem_configs:
   #     alpha: 1
   #     tau: 0.001
   #     use_prox: False
-  #     outer_iterations: 4000
-  #     primal_iterations: 5
+  #     outer_iterations: 8000
+  #     primal_iterations: 2
   #     init_grads: True
   #     primal_optimizer: "adam"
   #     persistant_primal_opt: False
@@ -102,9 +104,8 @@ problem_configs:
   #     lr_decay_type: "log"
   #     profile: false
   #     quantize: 32
-  
-  # problem3:
-  #   problem_name: "dsgt"
+  # problem2:
+  #   problem_name: "sonata_iter10"
   #   train_batch_size: 12500
   #   val_batch_size: 10000
   #   comm_radius: 1500.0
@@ -118,19 +119,29 @@ problem_configs:
   #     - "consensus_error"
   #     - "mesh_grid_density"
   #     - "current_epoch"
+  #     - "current_position"
+  #     - "current_graph"
   #   metrics_config:
-  #     evaluate_frequency: 20
+  #     evaluate_frequency: 10
   #     tloss_decay: 0.2
-  #     mesh_only_at_end: True
+  #     mesh_only_at_end: False
   #   optimizer_config:
-  #     alg_name: "dsgt"
-  #     alpha: 0.001
-  #     outer_iterations: 4000
+  #     alg_name: "sonata"
+  #     alpha: 1
+  #     tau: 0.001
+  #     use_prox: False
+  #     outer_iterations: 2000
+  #     primal_iterations: 10
   #     init_grads: True
+  #     primal_optimizer: "adam"
+  #     persistant_primal_opt: False
+  #     primal_lr_start: 0.001
+  #     primal_lr_finish: 0.0001
+  #     lr_decay_type: "log"
   #     profile: false
   #     quantize: 32
-  # problem4:
-  #   problem_name: "kgt"
+  # problem3:
+  #   problem_name: "sonata_iter20"
   #   train_batch_size: 12500
   #   val_batch_size: 10000
   #   comm_radius: 1500.0
@@ -144,18 +155,24 @@ problem_configs:
   #     - "consensus_error"
   #     - "mesh_grid_density"
   #     - "current_epoch"
+  #     - "current_position"
+  #     - "current_graph"
   #   metrics_config:
-  #     evaluate_frequency: 20
+  #     evaluate_frequency: 5
   #     tloss_decay: 0.2
-  #     mesh_only_at_end: True
+  #     mesh_only_at_end: False
   #   optimizer_config:
-  #     alg_name: "kgt"
-  #     outer_iterations: 4000
+  #     alg_name: "sonata"
   #     alpha: 1
-  #     t_local: 5
-  #     gamma: 0.001
-  #     lr_start: 0.001
-  #     lr_end: 0.0001
+  #     tau: 0.001
+  #     use_prox: False
+  #     outer_iterations: 1000
+  #     primal_iterations: 20
   #     init_grads: True
+  #     primal_optimizer: "adam"
+  #     persistant_primal_opt: False
+  #     primal_lr_start: 0.001
+  #     primal_lr_finish: 0.0001
+  #     lr_decay_type: "log"
   #     profile: false
   #     quantize: 32

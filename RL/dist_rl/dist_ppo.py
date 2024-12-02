@@ -74,6 +74,7 @@ class DistPPOProblem:
             "batch_lens": [],  # episodic lengths in batch
             "batch_rews": [],  # episodic returns in batch
             "actor_losses": [],  # losses of actor network in current iteration
+            "critic_losses": [],  # losses of critic network in current iteration
         }
 
     def heuristic(self, obs):
@@ -149,10 +150,10 @@ class DistPPOProblem:
         actor_loss = (-torch.min(surr1, surr2)).mean()
         critic_loss = nn.MSELoss()(V, self.curr_rtgs[i])
 
-        # print(actor_loss)
+        # print(actor_loss.item(),critic_loss.item())
 
         self.logger["actor_losses"].append(actor_loss.detach())
-
+        self.logger["critic_losses"].append(critic_loss.detach())
         return actor_loss, critic_loss
 
     def update_advantage(self):
@@ -489,3 +490,4 @@ class DistPPOProblem:
         self.logger["batch_lens"] = []
         self.logger["batch_rews"] = []
         self.logger["actor_losses"] = []
+        self.logger["critic_losses"] = []

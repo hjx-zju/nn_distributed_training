@@ -1,12 +1,12 @@
 experiment:
   name: "dist_online_dense_anim"
-  output_metadir: "../results/"
+  output_metadir: "../results_paper/"
   writeout: True
   use_cuda: True
   seed: 0
   data:
     data_dir: "../floorplans/32_data/"
-    waypoint_subdir: "tight_paths"
+    waypoint_subdir: "minimal_overlap"
     split_type: "trajectory"
     num_scans_in_window: 800
     num_beams: 20
@@ -65,3 +65,40 @@ problem_configs:
       primal_lr_finish: 0.0001
       lr_decay_type: "log"
       profile: false
+      quantize: 32
+  problem2:
+    problem_name: "sonata"
+    train_batch_size: 12500
+    val_batch_size: 10000
+    comm_radius: 1500.0
+    verbose_evals: True
+    dynamic_graph: True
+    save_models: True
+    metrics:
+      - "forward_pass_count"
+      - "train_loss_moving_average"
+      - "validation_loss"
+      - "consensus_error"
+      - "mesh_grid_density"
+      - "current_epoch"
+      - "current_position"
+      - "current_graph"
+    metrics_config:
+      evaluate_frequency: 20
+      tloss_decay: 0.2
+      mesh_only_at_end: False
+    optimizer_config:
+      alg_name: "sonata"
+      alpha: 1
+      tau: 0.0001
+      use_prox: False
+      outer_iterations: 4000
+      primal_iterations: 4
+      init_grads: True
+      primal_optimizer: "adam"
+      persistant_primal_opt: False
+      primal_lr_start: 0.001
+      primal_lr_finish: 0.0001
+      lr_decay_type: "log"
+      profile: false
+      quantize: 32

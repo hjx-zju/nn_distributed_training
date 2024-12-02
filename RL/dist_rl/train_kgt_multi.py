@@ -4,7 +4,7 @@ sys.path.insert(0, "../")
 import argparse
 import torch
 import model
-import dsgtPPO
+import kgtPPO
 from dist_ppo import DistPPOProblem
 import gym
 import sys
@@ -44,17 +44,17 @@ def main(args):
     dppo = DistPPOProblem(
     base_actor, base_critic, graph, env, **hyperparameters
     )
-    dsgt_confs = {
+    kgt_confs = {
     "max_rl_timesteps": 15_000_000,
     "n_updates_per_iteration": 5,
-    "alpha_actor": 1e-2,
+    "alpha_actor": 3e-2,
     "alpha_critic": 3e-3,
     "ID": args.id
     }
     device = torch.device("cpu")
 
-    print("running dsgt")
-    dopt = dsgtPPO.DSGTPPO(dppo, device, dsgt_confs)
+    print("running kgt")
+    dopt = kgtPPO.KGTPPO(dppo, device, kgt_confs)
     dopt.train()
 
 
@@ -63,6 +63,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     
     parser.add_argument('--seed', dest='seed', type=int, default=133)             # An int for our seed
-    parser.add_argument('--id', dest='id', type=int, default=0)                 # Formal name of environment
+    parser.add_argument('--id', dest='id', type=int, default=1)                 # Formal name of environment
     args = parser.parse_args()
     main(args)
