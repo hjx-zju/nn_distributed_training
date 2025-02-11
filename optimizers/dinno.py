@@ -1,6 +1,5 @@
 import torch
 import math
-from utils.quantize import quantize_
 class DiNNO:
     def __init__(self, ddl_problem, device, conf):
         self.pr = ddl_problem
@@ -10,7 +9,6 @@ class DiNNO:
             i: torch.zeros((self.pr.n), device=device)
             for i in range(self.pr.N)
         }
-        self.quant_bit=self.conf["quantize"]
         self.rho = self.conf["rho_init"]
         self.rho_scaling = self.conf["rho_scaling"]
         if self.conf["lr_decay_type"] == "constant":
@@ -49,24 +47,7 @@ class DiNNO:
                     )
                 else:
                     raise NameError("CADMM primal optimizer is unknown.")
-    # def quantize(self,data,delta=1e-4,quantize=False):
-    #     if quantize:
-    #         return delta * torch.round(data /delta)
-    #     else:
-    #         return data
-    def quantize(self,data,level=32,is_biased=False):
-        if level!=32:
-            s=2**level-1
-            norm=data.norm(p=2)
-            level_float=s*data.abs()/norm
-            previous_level=torch.floor(level_float)
-            is_next_level=(torch.rand_like(data)<(level_float-previous_level)).float()
-            new_level=previous_level+is_next_level
-            scale=1
-            return scale * torch.sign(data) * norm * (new_level / s)
-            
-        else:
-            return data
+
     def primal_update(self, i, th_reg, k):
         if self.conf["persistant_primal_opt"]:
             opt = self.opts[i]
@@ -135,7 +116,7 @@ class DiNNO:
             # Per node updates
             for i in range(self.pr.N):
                 neighs = list(self.pr.graph.neighbors(i))
-                thj = torch.stack([quantize_(ths[j],self.quant_bit) for j in neighs])
+                thj = torch.stack([ths[j] for j in neighs])
 
                 self.duals[i] += self.rho * torch.sum(ths[i] - thj, dim=0)
                 th_reg = (thj + ths[i]) / 2.0

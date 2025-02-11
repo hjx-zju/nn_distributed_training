@@ -2,7 +2,6 @@ import torch
 from utils import graph_generation
 import copy
 import math
-from utils.quantize import quantize_
 
 class SONATA:
 
@@ -21,7 +20,6 @@ class SONATA:
         self.alpha = conf["alpha"]
         self.tau=conf["tau"]
         self.use_prox=conf["use_prox"]
-        self.quant_bit=self.conf["quantize"]
         
         base_zeros = [
             torch.zeros_like(p, requires_grad=False, device=self.device)
@@ -151,13 +149,9 @@ class SONATA:
                     sum=W[i,i]*self.x_2_lists[i]
                     # Neighbor updates
                     for j in neighs:
-                        sum+=W[i,j]*quantize_(self.x_2_lists[j],self.quant_bit)
-                        
-                    # origin=torch.nn.utils.parameters_to_vector(self.pr.models[i].parameters()).clone().detach()
+                        sum+=W[i,j]*self.x_2_lists[j]
                     torch.nn.utils.vector_to_parameters(sum,self.pr.models[i].parameters()) 
-                    # new=torch.nn.utils.parameters_to_vector(self.pr.models[i].parameters()).clone().detach()
-                    # if(torch.equal(origin,new)):
-                    #    raise NameError("node ",i," not updated")
+            
                         
                 bloss = self.pr.local_batch_loss(i)
                 bloss.backward()
@@ -166,7 +160,6 @@ class SONATA:
             # Compute the batch loss and update using the gradients
             for i in range(self.pr.N):
                 # Batch loss
-
                 neighs = list(self.pr.graph.neighbors(i))
 
                 with torch.no_grad():
@@ -180,17 +173,11 @@ class SONATA:
                         
                         for j in neighs:
                             self.ylists[i][p].add_(
-                                quantize_(bak_ylist[j][p],self.quant_bit), alpha=W[i, j]
+                                bak_ylist[j][p], alpha=W[i, j]
                             )
-                            # self.ylists[i][p].add_(quantize_(self.plists[j][p].grad,self.quant_bit), alpha=W[i, j])
-                            # self.ylists[i][p].add_(quantize_(self.glists[j][p],self.quant_bit), alpha=-W[i, j])
-
-                        # self.glists[i][p] = self.plists[i][p].grad.clone()
-            #             self.plists[i][p].grad.zero_()
-
+                            # self.ylists[i][p].add_(self.plists[j][p].grad, alpha=W[i, j])
+                            # self.ylists[i][p].add_(self.glists[j][p], alpha=-W[i, j])
                         sum_ynorm += torch.norm(self.ylists[i][p]).item()
-
-
                         sum_gnorm += torch.norm(self.glists[i][p]).item()
                     # if i==0:
                     #     print(
@@ -203,7 +190,6 @@ class SONATA:
                 with torch.no_grad():
                     for p in range(self.num_params):
                         self.glists[i][p] = self.plists[i][p].grad.clone().detach()
-            #             self.plists[i][p].grad.zero_()
 
             if profiler is not None:
                 profiler.step()

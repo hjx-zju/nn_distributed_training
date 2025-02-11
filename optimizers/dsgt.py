@@ -1,14 +1,12 @@
 import torch
 from utils import graph_generation
 import copy
-from utils.quantize import quantize_
 
 class DSGT:
     def __init__(self, ddl_problem, device, conf):
         self.pr = ddl_problem
         self.conf = conf
         self.device = device
-        self.quant_bit = self.conf["quantize"]
         # Get list of all model parameter pointers
         self.plists = {
             i: list(self.pr.models[i].parameters()) for i in range(self.pr.N)
@@ -63,9 +61,9 @@ class DSGT:
                         )
                         # Neighbor updates
                         for j in neighs:
-                            self.plists[i][p].add_(quantize_(bak_plist[j][p],self.quant_bit), alpha=W[i, j])
+                            self.plists[i][p].add_(bak_plist[j][p], alpha=W[i, j])
                             self.plists[i][p].add_(
-                                quantize_(self.ylists[j][p],self.quant_bit), alpha=-self.alpha * W[i, j]
+                                self.ylists[j][p], alpha=-self.alpha * W[i, j]
                             )
                 self.pr.models[i].zero_grad()
                 bloss = self.pr.local_batch_loss(i)
@@ -89,11 +87,11 @@ class DSGT:
                      
                         self.ylists[i][p].multiply_(W[i, i])
                         for j in neighs:
-                            self.ylists[i][p].add_(quantize_(bak_ylist[j][p],self.quant_bit), alpha=W[i, j])
+                            self.ylists[i][p].add_(bak_ylist[j][p], alpha=W[i, j])
                             self.ylists[i][p].add_(
-                                quantize_(self.plists[j][p].grad,self.quant_bit), alpha=W[i, j]
+                                self.plists[j][p].grad, alpha=W[i, j]
                             )
-                            self.ylists[i][p].add_(quantize_(bak_glist[j][p],self.quant_bit), alpha=-W[i, j])
+                            self.ylists[i][p].add_(bak_glist[j][p], alpha=-W[i, j])
 
                         sum_ynorm += torch.norm(self.ylists[i][p]).item()
                         self.ylists[i][p].add_(self.plists[i][p].grad,alpha=W[i,i])

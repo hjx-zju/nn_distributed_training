@@ -2,7 +2,6 @@ import torch
 from utils import graph_generation
 import copy
 import math
-from utils.quantize import quantize_
 class KGT:
     def __init__(self, ddl_problem, device, conf):
         self.pr = ddl_problem
@@ -13,7 +12,6 @@ class KGT:
         self.plists = {
             i: list(self.pr.models[i].parameters()) for i in range(self.pr.N)
         }
-        self.quant_bit=self.conf["quantize"]
         # Useful numbers
         self.num_params = len(self.plists[0])
         self.alpha = conf["alpha"]
@@ -106,8 +104,8 @@ class KGT:
                         self.clists[i][p].add_(self.ylists[i][p],alpha=W[i,i]-1)
                         self.plists[i][p].set_(W[i,i]*(bak_plists[i][p]-self.local_step*self.gamma*self.alpha*self.ylists[i][p]))
                         for j in neighs:
-                            self.clists[i][p].add_(quantize_(self.ylists[j][p],self.quant_bit), alpha=W[i, j])
-                            self.plists[i][p].add_(quantize_(bak_plists[j][p]-self.local_step*self.gamma*self.alpha*self.ylists[j][p],self.quant_bit), alpha=W[i, j])
+                            self.clists[i][p].add_(self.ylists[j][p], alpha=W[i, j])
+                            self.plists[i][p].add_(bak_plists[j][p]-self.local_step*self.gamma*self.alpha*self.ylists[j][p], alpha=W[i, j])
                        # self.plists[i][p].add_(-alph * self.plists[i][p].grad
 
                        

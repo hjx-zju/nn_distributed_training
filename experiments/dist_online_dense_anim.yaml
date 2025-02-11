@@ -65,7 +65,7 @@ problem_configs:
       primal_lr_finish: 0.0001
       lr_decay_type: "log"
       profile: false
-      quantize: 32
+      
   problem2:
     problem_name: "sonata"
     train_batch_size: 12500
@@ -93,7 +93,7 @@ problem_configs:
       tau: 0.0001
       use_prox: False
       outer_iterations: 4000
-      primal_iterations: 4
+      primal_iterations: 5
       init_grads: True
       primal_optimizer: "adam"
       persistant_primal_opt: False
@@ -101,4 +101,4 @@ problem_configs:
       primal_lr_finish: 0.0001
       lr_decay_type: "log"
       profile: false
-      quantize: 32
+      

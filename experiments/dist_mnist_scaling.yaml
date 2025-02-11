@@ -1,7 +1,7 @@
 experiment:
   name: "scaling_dinno_const_fied"
   data_dir: "../data/"
-  output_metadir: "../results_scaling/"
+  output_metadir: "../results_paper/"
   use_cuda: true
   writeout: true
   loss: "NLL"
