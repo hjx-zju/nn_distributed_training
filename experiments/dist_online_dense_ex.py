@@ -10,6 +10,7 @@ import yaml
 import torch
 import networkx as nx
 import numpy as np
+from torch.utils.tensorboard import SummaryWriter
 
 from models.fourier_nn import FourierNet
 from problems.dist_online_dense_problem import DistOnlineDensityProblem
@@ -97,9 +98,12 @@ def experiment(yaml_pth):
 
     # Seperate configuration groups
     exp_conf = conf_dict["experiment"]
-
+    seeds=exp_conf["seed"]
+    if type(seeds)==int:
     # Set seed for reproducibility
-    torch.manual_seed(exp_conf["seed"])
+        seeds=[seeds]
+        # torch.manual_seed(exp_conf["seed"])
+    
 
     # Create the output directory
     output_metadir = exp_conf["output_metadir"]
@@ -231,61 +235,74 @@ def experiment(yaml_pth):
             )
     # Run each problem
     prob_confs = conf_dict["problem_configs"]
-
-    for prob_key in prob_confs:
-        prob_conf = prob_confs[prob_key]
-        opt_conf = prob_conf["optimizer_config"]
-
-        prob = DistOnlineDensityProblem(
-            base_model,
-            base_loss,
-            train_subsets,
-            val_set,
-            device,
-            prob_conf,
-        )
-
-        if opt_conf["alg_name"] == "dinno":
-            dopt = DiNNO(prob, device, opt_conf)
-        elif opt_conf["alg_name"] == "dsgt":
-            dopt = DSGT(prob, device, opt_conf)
-        elif opt_conf["alg_name"] == "dsgd":
-            dopt = DSGD(prob, device, opt_conf)
-        elif opt_conf["alg_name"] == "sonata":
-            dopt = SONATA(prob, device, opt_conf)
-        elif opt_conf["alg_name"] =="lt_admm":
-            dopt = LT_ADMM(prob, device, opt_conf)
-        elif opt_conf["alg_name"] =="randcom":
-            dopt = RANDCOM(prob, device, opt_conf)
-        elif   opt_conf["alg_name"] =="kgt":
-            dopt = KGT(prob, device, opt_conf)
+    for cnt, seed in enumerate(seeds):
+        torch.manual_seed(seed)
+        base_model = FourierNet(model_conf["shape"], scale=model_conf["scale"])
         
-        else:
-            raise NameError("Unknown distributed opt algorithm.")
+        for prob_key in prob_confs:
+            prob_conf = prob_confs[prob_key]
+            opt_conf = prob_conf["optimizer_config"]
+            if(len(seeds)>1):
+                if(cnt>0):
+                    prob_conf["problem_name"]=prob_conf["problem_name"][:-1]+str(cnt)
+                else:
+                    prob_conf["problem_name"]=prob_conf["problem_name"]+'_'+str(cnt)
+            # Create a new TensorBoard log directory for each algorithm
+            writer = SummaryWriter(log_dir=os.path.join(output_dir, prob_conf["problem_name"]+ "_logs"))
 
-        print("-------------------------------------------------------")
-        print("-------------------------------------------------------")
-        print("Running problem: " + prob_conf["problem_name"])
-        if opt_conf["profile"]:
-            with torch.profiler.profile(
-                schedule=torch.profiler.schedule(
-                    wait=1, warmup=1, active=3, repeat=3
-                ),
-                on_trace_ready=torch.profiler.tensorboard_trace_handler(
-                    os.path.join(
-                        output_dir, prob_conf["problem_name"] + "opt_profile"
-                    )
-                ),
-                record_shapes=True,
-                with_stack=True,
-            ) as prof:
-                dopt.train(profiler=prof)
-        else:
-            dopt.train()
+            prob = DistOnlineDensityProblem(
+                base_model,
+                base_loss,
+                train_subsets,
+                val_set,
+                device,
+                prob_conf,
+                writer  # Pass the writer to the problem
+            )
 
-        if exp_conf["writeout"]:
-            prob.save_metrics(output_dir)
+            if opt_conf["alg_name"] == "dinno":
+                dopt = DiNNO(prob, device, opt_conf)
+            elif opt_conf["alg_name"] == "dsgt":
+                dopt = DSGT(prob, device, opt_conf)
+            elif opt_conf["alg_name"] == "dsgd":
+                dopt = DSGD(prob, device, opt_conf)
+            elif opt_conf["alg_name"] == "sonata":
+                dopt = SONATA(prob, device, opt_conf)
+            elif opt_conf["alg_name"] =="lt_admm":
+                dopt = LT_ADMM(prob, device, opt_conf)
+            elif opt_conf["alg_name"] =="randcom":
+                dopt = RANDCOM(prob, device, opt_conf)
+            elif   opt_conf["alg_name"] =="kgt":
+                dopt = KGT(prob, device, opt_conf)
+            
+            else:
+                raise NameError("Unknown distributed opt algorithm.")
 
+            print("-------------------------------------------------------")
+            print("-------------------------------------------------------")
+            print("Running problem: " + prob_conf["problem_name"])
+            if opt_conf["profile"]:
+                with torch.profiler.profile(
+                    schedule=torch.profiler.schedule(
+                        wait=1, warmup=1, active=3, repeat=3
+                    ),
+                    on_trace_ready=torch.profiler.tensorboard_trace_handler(
+                        os.path.join(
+                            output_dir, prob_conf["problem_name"] + "opt_profile"
+                        )
+                    ),
+                    record_shapes=True,
+                    with_stack=True,
+                ) as prof:
+                    dopt.train(profiler=prof)
+            else:
+                dopt.train()
+
+            if exp_conf["writeout"]:
+                prob.save_metrics(output_dir)
+
+            # Close the writer after each algorithm
+            writer.close()
 
 if __name__ == "__main__":
     yaml_pth = sys.argv[1]

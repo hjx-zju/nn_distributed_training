@@ -1,10 +1,12 @@
 experiment:
-  name: "scaling_dinno_const_fied"
+  name: "scaling_dinno_const_fied_10"
   data_dir: "../data/"
-  output_metadir: "../results_paper/"
+  output_metadir: "../results_scaling/"
   use_cuda: true
   writeout: true
   loss: "NLL"
+  seed: [133,98,40,791,0]
+
   model:
     num_filters: 3
     kernel_size: 5
@@ -13,6 +15,7 @@ experiment:
     const: "fiedler"
     min_N: 10
     max_N: 100
+    Ns: 10
     target_fied: 1.0
     min_fied: 0.1
     max_fied: 2.0
@@ -36,7 +39,7 @@ problem_configs:
       alg_name: "dinno"
       rho_init: 0.5
       rho_scaling: 1.0003
-      outer_iterations: 1500
+      outer_iterations: 2000
       primal_iterations: 2
       primal_optimizer: "adam"
       persistant_primal_opt: false
@@ -44,25 +47,7 @@ problem_configs:
       primal_lr_finish: 0.0005
       lr_decay_type: "log"
       profile: false
-  problem2:
-    problem_name: "dsgt"
-    train_batch_size: 64
-    val_batch_size: 128
-    verbose_evals: true
-    metrics:
-      - "forward_pass_count"
-      - "validation_loss"
-      - "consensus_error"
-      - "top1_accuracy"
-      - "current_epoch"
-    metrics_config:
-      evaluate_frequency: 20
-    optimizer_config:
-      alg_name: "dsgt"
-      outer_iterations: 2000
-      alpha: 0.005
-      init_grads: True
-      profile: false
+  
   problem3:
     problem_name: "sonata"
     train_batch_size: 64
@@ -90,6 +75,25 @@ problem_configs:
       primal_lr_finish: 0.0005
       lr_decay_type: "log"
       profile: false
+  problem2:
+    problem_name: "dsgt"
+    train_batch_size: 64
+    val_batch_size: 128
+    verbose_evals: true
+    metrics:
+      - "forward_pass_count"
+      - "validation_loss"
+      - "consensus_error"
+      - "top1_accuracy"
+      - "current_epoch"
+    metrics_config:
+      evaluate_frequency: 20
+    optimizer_config:
+      alg_name: "dsgt"
+      outer_iterations: 2000
+      alpha: 0.005
+      init_grads: True
+      profile: false
   problem4:
     problem_name: "kgt"
     train_batch_size: 64
@@ -110,6 +114,6 @@ problem_configs:
       t_local: 5
       gamma: 0.005
       lr_start: 0.005
-      lr_end: 0.0001
+      lr_end: 0.0005
       init_grads: False
       profile: false

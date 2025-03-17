@@ -29,7 +29,11 @@ def experiment(yaml_pth):
 
     # Seperate configuration groups
     exp_conf = conf_dict["experiment"]
-
+    seeds=exp_conf["seed"]
+    if type(seeds)==int:
+    # Set seed for reproducibility
+        seeds=[seeds]
+ 
     # Create the output directory
     output_metadir = exp_conf["output_metadir"]
     if not os.path.exists(output_metadir):
@@ -87,43 +91,53 @@ def experiment(yaml_pth):
         #     scale_conf["num_trials"],
         # )
         # Ns = Ns.int().tolist()
-        Ns=[10,20,50,100]
+        # Ns=[10,20,50,100]
+        Ns=scale_conf["Ns"]
         graphs = []
          # Create communication graph
-        for N in Ns:
-            G = graph_generation.disk_with_fied(N, scale_conf["target_fied"])
-            graphs.append(G)
 
-    elif scale_conf["const"] == "num_nodes":
-        fieds = torch.linspace(
-            scale_conf["min_fied"],
-            scale_conf["max_fied"],
-            scale_conf["num_trials"],
-        )
+        G = graph_generation.disk_with_fied(Ns, scale_conf["target_fied"])
+        # graphs.append(G)
 
-        graphs = []
-        for fied in fieds:
-            G = graph_generation.disk_with_fied(scale_conf["num_nodes"], fied)
-            graphs.append(G)
+    # elif scale_conf["const"] == "num_nodes":
+    #     fieds = torch.linspace(
+    #         scale_conf["min_fied"],
+    #         scale_conf["max_fied"],
+    #         scale_conf["num_trials"],
+    #     )
+
+    #     graphs = []
+    #     for fied in fieds:
+    #         G = graph_generation.disk_with_fied(scale_conf["num_nodes"], fied)
+    #         graphs.append(G)
     else:
         raise NameError("Unknown const factor in scaling")
 
     print("Graph generation successful!")
 
     prob_confs = conf_dict["problem_configs"]
-    for prob_key in prob_confs:
-        prob_conf = prob_confs[prob_key]
-        alg=prob_conf["problem_name"]
-        for (trial, graph) in enumerate(graphs):
-            N = len(graph.nodes)
+    for cnt,seed in enumerate(seeds):
+        torch.manual_seed(seed)
+        base_model = MNISTConvNet(
+        model_conf["num_filters"],
+        model_conf["kernel_size"],
+        model_conf["linear_width"],
+        )
+        for prob_key in prob_confs:
+            prob_conf = prob_confs[prob_key]
+            alg=prob_conf["problem_name"]
+            N = len(G.nodes)
 
-            file_name = alg+"_"+str(trial)
-            prob_conf["problem_name"] = file_name
+            if(len(seeds)>1):
+                if(cnt>0):
+                    prob_conf["problem_name"]=prob_conf["problem_name"][:-1]+str(cnt)
+                else:
+                    prob_conf["problem_name"]=prob_conf["problem_name"]+'_'+str(cnt)
 
             if exp_conf["writeout"]:
                 # Save the graph for future visualization
                 nx.write_gpickle(
-                    graph, os.path.join(output_dir, file_name + ".gpickle")
+                    G, os.path.join(output_dir, prob_conf["problem_name"] + ".gpickle")
                 )
 
             train_subsets = []
@@ -136,7 +150,7 @@ def experiment(yaml_pth):
                 )
 
             prob = DistMNISTProblem(
-                graph,
+                G,
                 base_model,
                 base_loss,
                 train_subsets,
@@ -162,8 +176,7 @@ def experiment(yaml_pth):
 
             print("-------------------------------------------------------")
             print("-------------------------------------------------------")
-            print("Running problem: ", trial, " / ", len(graphs))
-            print("problem_name: ", file_name)
+            print("problem_name: ", prob_conf["problem_name"])
             print("Num Nodes: ", N)
             print("DS size: ", ds_size)
             if opt_conf["profile"]:

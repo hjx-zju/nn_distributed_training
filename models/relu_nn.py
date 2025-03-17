@@ -1,5 +1,5 @@
 from torch import nn
-
+from torchsummary import summary
 
 class FFReLUNet(nn.Module):
     """
@@ -114,3 +114,13 @@ class FFSigmoidNet(nn.Module):
             torch.Tensor: Output of network. [batch, self.shape[-1]]
         """
         return self.seq(x)
+
+if __name__ == "__main__":
+    # base_actor = model.FFReLUNet([obs_dim, 64, 64, 64, act_dim])
+    # base_critic = model.FFReLUNet([obs_dim, 64, 64, 64, 1])
+    actor_model = FFReLUNet([12, 256, 64, 64, 64, 4])
+    actor_model.to("cuda")
+    summary(actor_model, (12,))
+    critic_model = FFReLUNet([12, 64, 64, 64, 1])
+    critic_model.to("cuda")
+    summary(critic_model, (12,))

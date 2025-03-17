@@ -30,7 +30,14 @@ def print_value(pred,gt,name,occupied=0.8,empty=0.2):
     print(f"{name} MSE: {MSE(pred, gt):.3f}, SSIM: {SSIM(pred, gt):.3f}")
 
     return
-   
+def return_value(pred,gt,name,occupied=0.8,empty=0.2):
+    
+    if type(pred) == torch.Tensor:
+            pred = pred.numpy()
+    # print(name,"MSE: ", MSE(pred, gt),"SSIM: ", SSIM(pred, gt),"PSNR: ", PSNR(pred, gt),"BCCC: ", BCCC(pred, gt))
+    # print(f"{name} MSE: {MSE(pred, gt):.3f}, SSIM: {SSIM(pred, gt):.3f}")
+
+    return  MSE(pred, gt),SSIM(pred, gt)
 def FalsePositive(pred, gt,occupied=0.8,empty=0.2):
    
     false_positive = np.sum((pred >occupied) & (gt <empty))/np.sum(gt<empty)

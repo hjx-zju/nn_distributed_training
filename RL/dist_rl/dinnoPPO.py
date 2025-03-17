@@ -198,7 +198,7 @@ class DiNNOPPO:
             timesteps.append(self.pr.logger["t_so_far"])
             # if k%10==0:
             #     np.save(
-            #             f'./results_rl/avg_loss{self.conf["ID"]}.npy',
+            #             f'./results_dinno/avg_loss{self.conf["ID"]}.npy',
             #             np.asarray(avg_loss),
             #         )
             # Compute and save agreements
@@ -247,7 +247,7 @@ class DiNNOPPO:
                         "actor1": self.pr.actors[1].state_dict(),
                         "actor2": self.pr.actors[2].state_dict(),
                     },
-                    f'./results_rl/ppo_actors_tag_dinno_{self.conf["ID"]}_{k}.pth',
+                    f'./results_dinno/ppo_actors_tag_dinno_{self.conf["ID"]}_{k}.pth',
                 )
                 torch.save(
                     {
@@ -255,20 +255,20 @@ class DiNNOPPO:
                         "critic1": self.pr.critics[1].state_dict(),
                         "critic2": self.pr.critics[2].state_dict(),
                     },
-                    f'./results_rl/ppo_critics_tag_dinno_{self.conf["ID"]}_{k}.pth',
+                    f'./results_dinno/ppo_critics_tag_dinno_{self.conf["ID"]}_{k}.pth',
                 )
 
                 # save plotting data
                 np.save(
-                    f'./results_rl/avg_ep_rews_dinno_{self.conf["ID"]}.npy',
+                    f'./results_dinno/avg_ep_rews_dinno_{self.conf["ID"]}.npy',
                     np.asarray(avg_ep_rews),
                 )
                 np.save(
-                    f'./results_rl/timesteps_dinno_{self.conf["ID"]}.npy',
+                    f'./results_dinno/timesteps_dinno_{self.conf["ID"]}.npy',
                     np.asarray(timesteps),
                 )
                 np.savez(
-                    f'./results_rl/agreements_dinno_{self.conf["ID"]}',
+                    f'./results_dinno/agreements_dinno_{self.conf["ID"]}',
                     agree_0=agree_0,
                     agree_1=agree_1,
                     agree_2=agree_2,

@@ -165,13 +165,13 @@ class SONATAPPO:
 
             aloss = actor_loss + surrogate_loss_actor + dot_actor
             closs = critic_loss + surrogate_loss_critic + dot_critic
-            if i == 0:
-                print(
-                    f"\nActor loss: {actor_loss.item()} Surrogate loss: {surrogate_loss_actor.item()} Dot product: {dot_actor.item()}"
-                )
-                print(
-                    f"Critic loss: {critic_loss.item() } Surrogate loss: {surrogate_loss_critic.item()} Dot product: {dot_critic.item()}"
-                )
+            # if i == 0:
+            #     print(
+            #         f"\nActor loss: {actor_loss.item()} Surrogate loss: {surrogate_loss_actor.item()} Dot product: {dot_actor.item()}"
+            #     )
+            #     print(
+            #         f"Critic loss: {critic_loss.item() } Surrogate loss: {surrogate_loss_critic.item()} Dot product: {dot_critic.item()}"
+            #     )
             opt_actor.zero_grad()
             aloss.backward(retain_graph=True)
             torch.nn.utils.clip_grad_norm_(self.pr.actors[i].parameters(), 0.5)

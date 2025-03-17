@@ -4,6 +4,7 @@ import os
 import numpy as np
 from torch._C import device
 from utils import graph_generation
+from torch.utils.tensorboard import SummaryWriter
 
 
 class DistOnlineDensityProblem:
@@ -15,13 +16,13 @@ class DistOnlineDensityProblem:
         val_set,
         device,
         conf,
+        writer=None
     ):
         # self.graph = graph
         self.base_loss = base_loss
         self.train_sets = train_sets
         self.val_set = val_set
         self.conf = conf
-
         # Initialize Communication Graph
         self.comm_radius = conf["comm_radius"]
         self.dynamic_graph = conf["dynamic_graph"]
@@ -55,6 +56,7 @@ class DistOnlineDensityProblem:
         self.metrics = {met_name: [] for met_name in self.conf["metrics"]}
         self.epoch_tracker = torch.zeros(self.N)
         self.forward_cnt = 0
+        self.cnt_step=0
 
         self.dev_cpu = torch.device("cpu")
         if "train_loss_moving_average" in self.metrics:
@@ -82,7 +84,8 @@ class DistOnlineDensityProblem:
             self.models[i] = self.models[i].to(self.device)
 
         self.mesh_inputs = self.mesh_inputs.to(self.device)
-
+        if(writer is not None):
+            self.writer = writer
     def local_batch_loss(self, i):
         """Forward pass on a batch data for model at node i,
         and if it's node_id = 0 then increment a metric that
@@ -232,6 +235,9 @@ class DistOnlineDensityProblem:
                     torch.amin(distances_mean).item(),
                     torch.amax(distances_mean).item(),
                 )
+                # if self.writer:
+                #     self.writer.add_scalar('Consensus/Min', torch.amin(distances_mean).item())
+                #     self.writer.add_scalar('Consensus/Max', torch.amax(distances_mean).item())
             elif met_name == "validation_loss":
                 # Average node loss on the validation dataset
                 val_losses = [self.validate(i) for i in range(self.N)]
@@ -243,6 +249,8 @@ class DistOnlineDensityProblem:
                     torch.mean(val_losses).item(),
                     torch.amax(val_losses).item(),
                 )
+                if self.writer:
+                    self.writer.add_scalar('Validation Loss', torch.mean(val_losses).item(), self.cnt_step)
             elif met_name == "train_loss_moving_average":
                 self.metrics[met_name].append(self.tloss_tracker.clone())
                 evalprint += "Train Loss MA: {:.4f} - {:.4f} | ".format(
@@ -295,4 +303,5 @@ class DistOnlineDensityProblem:
                 raise NameError("Unknown metric.")
 
         print(evalprint)
+        self.cnt_step+=20
         return

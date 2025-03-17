@@ -1,12 +1,16 @@
 experiment:
-  name: "dist_online_dense_solo"
-  output_metadir: "../results_paper/"
+  name: "dist_online_dense_repeat2_eval_mesh"
+  output_metadir: "../results_iros/"
   writeout: True
   use_cuda: True
-  seed: 0
+  # seed: [0,133,98,40,791,967]
+  # seed: [133,98,40,791,0]
+  seed: [128,983,35,786,962]
+
+
   data:
     data_dir: "../floorplans/32_data/"
-    waypoint_subdir: "minimal_overlap"
+    waypoint_subdir: "tight_paths"
     split_type: "trajectory"
     num_scans_in_window: 800
     num_beams: 20
@@ -24,7 +28,7 @@ experiment:
     shape: [2, 256, 64, 64, 64, 1]
     scale: 0.05
   individual_training:
-    train_solo: True
+    train_solo: False
     optimizer: "adam"
     lr: 0.001
     epochs: 150
@@ -47,6 +51,7 @@ problem_configs:
       - "consensus_error"
       - "mesh_grid_density"
       - "current_epoch"
+      - "current_graph"
     metrics_config:
       evaluate_frequency: 20
       tloss_decay: 0.2
@@ -84,11 +89,11 @@ problem_configs:
     metrics_config:
       evaluate_frequency: 20
       tloss_decay: 0.2
-      mesh_only_at_end: False
+      mesh_only_at_end: True
     optimizer_config:
       alg_name: "sonata"
       alpha: 1
-      tau: 0.001
+      tau: 0.0001
       use_prox: False
       outer_iterations: 4000
       primal_iterations: 5
@@ -101,59 +106,59 @@ problem_configs:
       profile: false
       
   
-  problem3:
-    problem_name: "dsgt"
-    train_batch_size: 12500
-    val_batch_size: 10000
-    comm_radius: 1500.0
-    verbose_evals: True
-    dynamic_graph: True
-    save_models: True
-    metrics:
-      - "forward_pass_count"
-      - "train_loss_moving_average"
-      - "validation_loss"
-      - "consensus_error"
-      - "mesh_grid_density"
-      - "current_epoch"
-    metrics_config:
-      evaluate_frequency: 20
-      tloss_decay: 0.2
-      mesh_only_at_end: True
-    optimizer_config:
-      alg_name: "dsgt"
-      alpha: 0.001
-      outer_iterations: 4000
-      init_grads: True
-      profile: false
+  # problem3:
+  #   problem_name: "dsgt"
+  #   train_batch_size: 12500
+  #   val_batch_size: 10000
+  #   comm_radius: 1500.0
+  #   verbose_evals: True
+  #   dynamic_graph: True
+  #   save_models: True
+  #   metrics:
+  #     - "forward_pass_count"
+  #     - "train_loss_moving_average"
+  #     - "validation_loss"
+  #     - "consensus_error"
+  #     - "mesh_grid_density"
+  #     - "current_epoch"
+  #   metrics_config:
+  #     evaluate_frequency: 20
+  #     tloss_decay: 0.2
+  #     mesh_only_at_end: True
+  #   optimizer_config:
+  #     alg_name: "dsgt"
+  #     alpha: 0.001
+  #     outer_iterations: 4000
+  #     init_grads: True
+  #     profile: false
   
-  problem4:
-    problem_name: "kgt"
-    train_batch_size: 12500
-    val_batch_size: 10000
-    comm_radius: 1500.0
-    verbose_evals: True
-    dynamic_graph: True
-    save_models: True
-    metrics:
-      - "forward_pass_count"
-      - "train_loss_moving_average"
-      - "validation_loss"
-      - "consensus_error"
-      - "mesh_grid_density"
-      - "current_epoch"
-    metrics_config:
-      evaluate_frequency: 20
-      tloss_decay: 0.2
-      mesh_only_at_end: True
-    optimizer_config:
-      alg_name: "kgt"
-      outer_iterations: 4000
-      alpha: 1
-      t_local: 5
-      gamma: 0.001
-      lr_start: 0.001
-      lr_end: 0.0001
-      init_grads: True
-      profile: false
-  #     
+  # problem4:
+  #   problem_name: "kgt"
+  #   train_batch_size: 12500
+  #   val_batch_size: 10000
+  #   comm_radius: 1500.0
+  #   verbose_evals: True
+  #   dynamic_graph: True
+  #   save_models: True
+  #   metrics:
+  #     - "forward_pass_count"
+  #     - "train_loss_moving_average"
+  #     - "validation_loss"
+  #     - "consensus_error"
+  #     - "mesh_grid_density"
+  #     - "current_epoch"
+  #   metrics_config:
+  #     evaluate_frequency: 20
+  #     tloss_decay: 0.2
+  #     mesh_only_at_end: True
+  #   optimizer_config:
+  #     alg_name: "kgt"
+  #     outer_iterations: 4000
+  #     alpha: 1
+  #     t_local: 5
+  #     gamma: 0.001
+  #     lr_start: 0.001
+  #     lr_end: 0.0001
+  #     init_grads: True
+  #     profile: false
+  # #     

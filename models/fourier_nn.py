@@ -7,6 +7,7 @@ Written by: Javier Yu (May 25, 2021)
 """
 import torch
 import numpy as np
+from torchsummary import summary
 
 torch.set_default_tensor_type(torch.DoubleTensor)
 
@@ -60,3 +61,10 @@ class FourierNet(torch.nn.Module):
 
     def forward(self, x):
         return self.seq(x)
+    
+if __name__ == "__main__":
+    # Test MNISTConvNet
+    model = FourierNet([2, 256, 64, 64, 64, 1],0.05)
+    model.to("cuda")
+    # print summary
+    summary(model,(1,2))

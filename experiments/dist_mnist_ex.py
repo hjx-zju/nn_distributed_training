@@ -84,7 +84,11 @@ def experiment(yaml_pth):
     output_dir = os.path.join(
         output_metadir, time_now + "_" + exp_conf["name"]
     )
-
+    seeds=exp_conf["seed"]
+    
+    if type(seeds)==int:
+    # Set seed for reproducibility
+        seeds=[seeds]
     if exp_conf["writeout"]:
         os.mkdir(output_dir)
         # Save a copy of the conf to the output directory
@@ -93,7 +97,7 @@ def experiment(yaml_pth):
 
     # Create communication graph
     graph_conf = exp_conf["graph"]
-    # N, graph = graph_generation.generate_from_conf(graph_conf)
+    N, graph = graph_generation.generate_from_conf(graph_conf)
     # N=10
     # graph= graph_generation.disk_with_fied(10, 1.0)
     if exp_conf["writeout"]:
@@ -184,61 +188,73 @@ def experiment(yaml_pth):
 
     # Run each optimizer on the problem
     prob_confs = conf_dict["problem_configs"]
-    for prob_key in prob_confs:
-        prob_conf = prob_confs[prob_key]
-        opt_conf = prob_conf["optimizer_config"]
-        
-        prob = DistMNISTProblem(
-            graph,
-            base_model,
-            base_loss,
-            train_subsets,
-            val_set,
-            device,
-            prob_conf,
+    
+    for cnt, seed in enumerate(seeds):
+        torch.manual_seed(seed)
+        base_model = MNISTConvNet(
+        model_conf["num_filters"],
+        model_conf["kernel_size"],
+        model_conf["linear_width"],
         )
+        for prob_key in prob_confs:
+            prob_conf = prob_confs[prob_key]
+            opt_conf = prob_conf["optimizer_config"]
+            if(len(seeds)>1):
+                if(cnt>0):
+                    prob_conf["problem_name"]=prob_conf["problem_name"][:-1]+str(cnt)
+                else:
+                    prob_conf["problem_name"]=prob_conf["problem_name"]+'_'+str(cnt)
+            prob = DistMNISTProblem(
+                graph,
+                base_model,
+                base_loss,
+                train_subsets,
+                val_set,
+                device,
+                prob_conf,
+            )
 
-        if opt_conf["alg_name"] == "dinno":
-            dopt = DiNNO(prob, device, opt_conf)
-        elif opt_conf["alg_name"] == "dsgd":
-            dopt = DSGD(prob, device, opt_conf)
-        elif opt_conf["alg_name"] == "dsgt":
-            dopt = DSGT(prob, device, opt_conf)
-        elif opt_conf["alg_name"] == "sonata":
-            dopt = SONATA(prob, device, opt_conf)
-        elif opt_conf["alg_name"] =="lt_admm":
-            dopt = LT_ADMM(prob, device, opt_conf)
-        elif opt_conf["alg_name"] =="randcom":
-            dopt = RANDCOM(prob, device, opt_conf)
-        elif opt_conf["alg_name"] =="flexgt":
-            dopt = FLEXGT(prob, device, opt_conf)
-        elif opt_conf["alg_name"] =="kgt":
-            dopt = KGT(prob, device, opt_conf)
-        else:
-            raise NameError("Unknown distributed opt algorithm.")
+            if opt_conf["alg_name"] == "dinno":
+                dopt = DiNNO(prob, device, opt_conf)
+            elif opt_conf["alg_name"] == "dsgd":
+                dopt = DSGD(prob, device, opt_conf)
+            elif opt_conf["alg_name"] == "dsgt":
+                dopt = DSGT(prob, device, opt_conf)
+            elif opt_conf["alg_name"] == "sonata":
+                dopt = SONATA(prob, device, opt_conf)
+            elif opt_conf["alg_name"] =="lt_admm":
+                dopt = LT_ADMM(prob, device, opt_conf)
+            elif opt_conf["alg_name"] =="randcom":
+                dopt = RANDCOM(prob, device, opt_conf)
+            elif opt_conf["alg_name"] =="flexgt":
+                dopt = FLEXGT(prob, device, opt_conf)
+            elif opt_conf["alg_name"] =="kgt":
+                dopt = KGT(prob, device, opt_conf)
+            else:
+                raise NameError("Unknown distributed opt algorithm.")
 
-        print("-------------------------------------------------------")
-        print("-------------------------------------------------------")
-        print("Running problem: " + prob_conf["problem_name"])
-        if opt_conf["profile"]:
-            with torch.profiler.profile(
-                schedule=torch.profiler.schedule(
-                    wait=1, warmup=1, active=3, repeat=3
-                ),
-                on_trace_ready=torch.profiler.tensorboard_trace_handler(
-                    os.path.join(
-                        output_dir, prob_conf["problem_name"] + "opt_profile"
-                    )
-                ),
-                record_shapes=True,
-                with_stack=True,
-            ) as prof:
-                dopt.train(profiler=prof)
-        else:
-            dopt.train()
+            print("-------------------------------------------------------")
+            print("-------------------------------------------------------")
+            print("Running problem: " + prob_conf["problem_name"])
+            if opt_conf["profile"]:
+                with torch.profiler.profile(
+                    schedule=torch.profiler.schedule(
+                        wait=1, warmup=1, active=3, repeat=3
+                    ),
+                    on_trace_ready=torch.profiler.tensorboard_trace_handler(
+                        os.path.join(
+                            output_dir, prob_conf["problem_name"] + "opt_profile"
+                        )
+                    ),
+                    record_shapes=True,
+                    with_stack=True,
+                ) as prof:
+                    dopt.train(profiler=prof)
+            else:
+                dopt.train()
 
-        if exp_conf["writeout"]:
-            prob.save_metrics(output_dir)
+            if exp_conf["writeout"]:
+                prob.save_metrics(output_dir)
 
     # REPEAT:
     #  - Create problem
