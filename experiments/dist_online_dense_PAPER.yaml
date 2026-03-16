@@ -28,10 +28,10 @@ experiment:
     shape: [2, 256, 64, 64, 64, 1]
     scale: 0.05
   individual_training:
-    train_solo: False
+    train_solo: True
     optimizer: "adam"
     lr: 0.001
-    epochs: 150
+    epochs: 50
     train_batch_size: 10000
     val_batch_size: 10000
     verbose: True
