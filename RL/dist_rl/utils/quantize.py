@@ -115,8 +115,3 @@ def quantize_(data, level=32, is_biased=False):
         return scale * torch.sign(data) * norm * (new_level / s)
     else:
         return data
-if __name__=="__main__":
-    tensor=torch.rand((4,1),dtype=torch.float32)
-    quantized_tensor=quantize_(tensor,16)
-    quantized_tensor=quantized_tensor.half().float()
-    print(tensor,"\n",quantized_tensor)

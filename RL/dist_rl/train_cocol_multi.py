@@ -4,7 +4,7 @@ sys.path.insert(0, "../")
 import argparse
 import torch
 import model
-import sonataPPO
+import cocolPPO
 from dist_ppo import DistPPOProblem
 import gym
 import sys
@@ -57,11 +57,12 @@ def main(args):
             "max_rl_timesteps": 15_000_000,
             "outer_iterations": 15_000_000,
             "ID": args.id,
+            "quantize": 16,
         }
         device = torch.device("cpu")
 
-        print("running sonata")
-        dopt = sonataPPO.SONATAPPO(dppo, device, sonata_confs)
+        print("running CoCoL")
+        dopt = cocolPPO.COCOLPPO(dppo, device, sonata_confs)
         dopt.train()
 
 
@@ -70,7 +71,7 @@ if __name__ == "__main__":
 	parser = argparse.ArgumentParser()
 
 	parser.add_argument('--seed', dest='seed', type=int, default=133)             # An int for our seed
-	parser.add_argument('--id', dest='id', type=int, default=5)                 # Formal name of environment
+	parser.add_argument('--id', dest='id', type=int, default=0)                 # Formal name of environment
 
 	args = parser.parse_args()
 

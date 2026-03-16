@@ -3,9 +3,10 @@ import math
 import numpy as np
 import copy
 from utils import graph_generation
+from utils.quantize import quantize_,get_n_bits
 
 
-class SONATAPPO:
+class COCOLPPO:
     def __init__(self, ddl_problem, device, conf):
         self.pr = ddl_problem
         self.conf = conf
@@ -43,6 +44,8 @@ class SONATAPPO:
         }
         self.tau = conf["tau"]
         self.alpha = conf["alpha"]
+        self.quantize = conf["quantize"]
+        
         # self.critic_lr=conf["primal_lr_finish"]
         if self.conf["lr_decay_type"] == "constant":
             self.primal_lr = self.conf["primal_lr_start"] * torch.ones(
@@ -229,6 +232,7 @@ class SONATAPPO:
         agree_0 = np.array([])
         agree_1 = np.array([])
         agree_2 = np.array([])
+        self.total_bit_transfer = 0
         while self.pr.logger["t_so_far"] < self.conf["max_rl_timesteps"]:
             self.pr.split_rollout_marl()
             self.pr.update_advantage()
@@ -256,8 +260,17 @@ class SONATAPPO:
                     sum_actor = W[i, i] * ths_actor[i]
                     sum_critic = W[i, i] * ths_critic[i]
                     for j in neighs:
-                        sum_actor += W[i, j] * ths_actor[j]
-                        sum_critic += W[i, j] * ths_critic[j]
+                        recv_tensor_actor = quantize_(ths_actor[j],self.quantize)
+                        recv_tensor_critic = quantize_(ths_critic[j],self.quantize)
+                        if self.quantize==16:
+                            recv_tensor_actor = recv_tensor_actor.half()
+                            recv_tensor_critic = recv_tensor_critic.half()
+                        self.total_bit_transfer += get_n_bits(recv_tensor_actor)
+                        self.total_bit_transfer += get_n_bits(recv_tensor_critic)
+                        sum_actor += W[i, j] * recv_tensor_actor.float()
+                        sum_critic += W[i, j] * recv_tensor_critic.float()
+                        # sum_actor += W[i, j] * quantize_(ths_actor[j],self.quantize)
+                        # sum_critic += W[i, j] * quantize_(ths_critic[j],self.quantize)
                     torch.nn.utils.vector_to_parameters(
                         sum_actor, self.pr.actors[i].parameters()
                     )
@@ -282,9 +295,14 @@ class SONATAPPO:
                             self.glists_actor[i][p], alpha=-1.0
                         )
                         for j in neighs:
-                            self.ylists_actor[i][p].add_(
-                                bak_ylist_actor[j][p], alpha=W[i, j]
-                            )
+                            recv_tensor_actor = quantize_(bak_ylist_actor[j][p],self.quantize)
+                            if self.quantize==16:
+                                recv_tensor_actor = recv_tensor_actor.half()
+                            self.total_bit_transfer += get_n_bits(recv_tensor_actor)
+                            self.ylists_actor[i][p].add_(recv_tensor_actor.float(), alpha=W[i, j])
+                            # self.ylists_actor[i][p].add_(
+                            #     quantize_(bak_ylist_actor[j][p],self.quantize), alpha=W[i, j]
+                            # )
                         self.glists_actor[i][p] = self.plists_actor[i][p].grad.clone().detach()
                         self.plists_actor[i][p].grad.zero_()
                 critic_loss.backward()
@@ -297,9 +315,14 @@ class SONATAPPO:
                             self.glists_critic[i][p], alpha=-1.0
                         )
                         for j in neighs:
-                            self.ylists_critic[i][p].add_(
-                                bak_ylist_critic[j][p], alpha=W[i, j]
-                            )
+                            recv_tensor_critic = quantize_(bak_ylist_critic[j][p],self.quantize)
+                            if self.quantize==16:
+                                recv_tensor_critic = recv_tensor_critic.half()
+                            self.total_bit_transfer += get_n_bits(recv_tensor_critic)
+                            self.ylists_critic[i][p].add_(recv_tensor_critic.float(), alpha=W[i, j])
+                            # self.ylists_critic[i][p].add_(
+                            #     quantize_(bak_ylist_critic[j][p],self.quantize), alpha=W[i, j]
+                            # )
                         self.glists_critic[i][p] = self.plists_critic[i][p].grad.clone().detach()
                         self.plists_critic[i][p].grad.zero_()
             # for i in range(self.pr.N):
@@ -329,11 +352,7 @@ class SONATAPPO:
                     ),
                 ]
             )
-            # if k % 10 == 0:
-            #     np.save(
-            #         f'./results_rl/avg_loss_sonata{self.conf["ID"]}.npy',
-            #         np.asarray(avg_loss),
-            #     )
+
 
             avg_ep_rews.append(
                 np.mean([np.sum(ep_rews) for ep_rews in self.pr.logger["batch_rews"]])
@@ -381,7 +400,7 @@ class SONATAPPO:
                         "actor1": self.pr.actors[1].state_dict(),
                         "actor2": self.pr.actors[2].state_dict(),
                     },
-                    f'./results_sonata/ppo_actors_tag_sonata_{self.conf["ID"]}_{k}.pth',
+                    f'./results_cocol/ppo_actors_tag_cocol_{self.conf["ID"]}.pth',
                 )
                 torch.save(
                     {
@@ -389,25 +408,32 @@ class SONATAPPO:
                         "critic1": self.pr.critics[1].state_dict(),
                         "critic2": self.pr.critics[2].state_dict(),
                     },
-                    f'./results_sonata/ppo_critics_tag_sonata_{self.conf["ID"]}_{k}.pth',
+                    f'./results_cocol/ppo_critics_tag_cocol_{self.conf["ID"]}.pth',
                 )
 
                 # save plotting data
                 np.save(
-                    f'./results_sonata/avg_ep_rews_sonata_{self.conf["ID"]}.npy',
+                    f'./results_cocol/avg_ep_rews_cocol_{self.conf["ID"]}.npy',
                     np.asarray(avg_ep_rews),
                 )
                 np.save(
-                    f'./results_sonata/timesteps_sonata_{self.conf["ID"]}.npy',
+                    f'./results_cocol/timesteps_cocol_{self.conf["ID"]}.npy',
                     np.asarray(timesteps),
                 )
                 np.savez(
-                    f'./results_sonata/agreements_sonata_{self.conf["ID"]}',
+                    f'./results_cocol/agreements_cocol_{self.conf["ID"]}',
                     agree_0=agree_0,
                     agree_1=agree_1,
                     agree_2=agree_2,
                 )
+                np.save(
+                    f'./results_cocol/avg_loss_cocol_{self.conf["ID"]}.npy',
+                    np.asarray(avg_loss),
+                )
 
             k += 1
+        if self.quantize!=32:
+            print("Total bit transfer: ",self.total_bit_transfer)
+            print("Original bit transfer: ",int(self.total_bit_transfer*32/self.quantize))
 
         return
