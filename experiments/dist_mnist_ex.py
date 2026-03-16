@@ -17,11 +17,12 @@ from optimizers.dsgt import DSGT
 from optimizers.sonata import SONATA 
 from optimizers.randcom import RANDCOM
 from optimizers.lt_admm import LT_ADMM
+from optimizers.sonata_parallel import SONATA_PARALLEL
 from optimizers.flexgt import FLEXGT
 from optimizers.kgt import KGT
 from utils import graph_generation
 
-torch.set_default_tensor_type(torch.DoubleTensor)
+# torch.set_default_tensor_type(torch.DoubleTensor)
 
 
 def train_solo(model, loss, train_set, val_set, device, conf):
@@ -230,6 +231,8 @@ def experiment(yaml_pth):
                 dopt = FLEXGT(prob, device, opt_conf)
             elif opt_conf["alg_name"] =="kgt":
                 dopt = KGT(prob, device, opt_conf)
+            elif opt_conf["alg_name"] =="sonata_parallel":
+                dopt = SONATA_PARALLEL(prob, device, opt_conf)
             else:
                 raise NameError("Unknown distributed opt algorithm.")
 

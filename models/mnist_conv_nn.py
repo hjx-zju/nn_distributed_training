@@ -1,6 +1,6 @@
 import torchvision
 import torch.nn as nn
-from torchsummary import summary
+# from torchsummary import summary
 
 class MNISTConvNet(nn.Module):
     """Implements a basic convolutional neural network with one

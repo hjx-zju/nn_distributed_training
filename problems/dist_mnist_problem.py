@@ -106,6 +106,14 @@ class DistMNISTProblem:
         file_name = self.conf["problem_name"] + "_results.pt"
         file_path = os.path.join(output_dir, file_name)
         torch.save(self.metrics, file_path)
+        if self.conf["save_models"]:
+            state_dicts = {
+                i: self.models[i].state_dict() for i in range(self.N)
+            }
+            file_name = self.conf["problem_name"] + "_models.pt"
+            file_path = os.path.join(output_dir, file_name)
+            torch.save(state_dicts, file_path)
+        return
         return
 
     def validate(self, i):
@@ -205,6 +213,128 @@ class DistMNISTProblem:
                 # Returns the validations prediction correctness vector
                 # Nothing to print from here
                 self.metrics[met_name].append(valid_vecs)
+            else:
+                raise NameError("Unknown metric.")
+
+        print(evalprint)
+        return
+
+
+
+class DistMNISTProblem_Single:
+
+    def __init__(
+        self,
+        graph,
+        base_model,
+        base_loss,
+        train_set,
+        val_set,
+        device,
+        conf,
+    ):
+        self.graph = graph
+        self.base_loss = base_loss
+        self.train_set = train_set
+        self.val_set = val_set
+        self.conf = conf
+
+        # Extract some useful info
+        self.N = graph.number_of_nodes()
+
+        self.device = device
+
+        # Copy the base_model for each node
+        self.model = copy.deepcopy(base_model).to(self.device)
+
+        # Create train loaders and iterators with specified batch size
+        self.train_loader =torch.utils.data.DataLoader(
+                self.train_set,
+                batch_size=self.conf["train_batch_size"],
+                shuffle=True,)
+        self.train_iter =iter(self.train_loader)
+
+        self.val_loader = torch.utils.data.DataLoader(
+            self.val_set, batch_size=self.conf["val_batch_size"]
+        )
+
+        # Initialize lists for metrics with names
+        self.metrics = {met_name: [] for met_name in self.conf["metrics"]}
+        self.epoch_tracker =0
+        self.forward_cnt = 0
+
+    def local_batch_loss(self):
+        """Forward pass on a batch of data for the single model,
+        incrementing the forward pass count and epoch tracker as needed.
+
+        Returns:
+            (torch.Tensor): Loss of the model on a batch of local data.
+        """
+        try:
+            x, y = next(self.train_iter)
+        except StopIteration:
+            self.epoch_tracker += 1
+            self.train_iter = iter(self.train_loader)
+            x, y = next(self.train_iter)
+
+        self.forward_cnt += self.conf["train_batch_size"]
+        yh = self.model.forward(x.to(self.device))
+        return self.base_loss(yh, y.to(self.device))
+
+    def update_graph(self):
+        """Placeholder because the graph is not dynamic in this problem."""
+        pass
+
+    def save_metrics(self,rank, output_dir):
+        """Save current metrics lists to a PT file."""
+        file_name = self.conf["problem_name"] +f"_{rank}"+ "_results.pt"
+        file_path = os.path.join(output_dir, file_name)
+        torch.save(self.metrics, file_path)
+        return
+
+    def validate(self):
+        """Compute the loss and accuracy of the model on the validation set.
+
+        Returns:
+            (float, float, torch.Tensor): Average loss, accuracy, and prediction correctness vector.
+        """
+        with torch.no_grad():
+            loss = 0.0
+            correct = 0
+            correct_list = []
+            for x, y in self.val_loader:
+                x, y = x.to(self.device), y.to(self.device)
+                yh = self.model.forward(x)
+                loss += self.base_loss(yh, y).item()
+                pred = yh.argmax(dim=1, keepdim=True)
+                correct_vec = pred.eq(y.view_as(pred))
+                correct += correct_vec.sum().item()
+                correct_list.append(pred)
+            avg_loss = loss / len(self.val_loader.dataset)
+            acc = correct / len(self.val_loader.dataset)
+            return avg_loss, acc, torch.vstack(correct_list)
+
+    def evaluate_metrics(self,at_end=False):
+        """Evaluate the model and append values to the metric lists."""
+        if "validation_loss" in self.metrics or "top1_accuracy" in self.metrics or "validation_as_vector" in self.metrics:
+            avg_loss, acc, valid_vec = self.validate()
+
+        evalprint = "| "
+        for met_name in self.conf["metrics"]:
+            if met_name == "validation_loss":
+                self.metrics[met_name].append(avg_loss)
+                evalprint += f"Val Loss: {avg_loss:.4f} | "
+            elif met_name == "top1_accuracy":
+                self.metrics[met_name].append(acc)
+                evalprint += f"Top1: {acc:.2f} | "
+            elif met_name == "forward_pass_count":
+                self.metrics[met_name].append(self.forward_cnt)
+                evalprint += f"Num Forward: {self.forward_cnt} | "
+            elif met_name == "current_epoch":
+                self.metrics[met_name].append(self.epoch_tracker)
+                evalprint += f"Epoch: {self.epoch_tracker} | "
+            elif met_name == "validation_as_vector":
+                self.metrics[met_name].append(valid_vec)
             else:
                 raise NameError("Unknown metric.")
 

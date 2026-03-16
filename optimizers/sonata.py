@@ -2,6 +2,7 @@ import torch
 from utils import graph_generation
 import copy
 import math
+from utils.quantize import quantize_,get_n_bits
 
 class SONATA:
 
@@ -20,7 +21,13 @@ class SONATA:
         self.alpha = conf["alpha"]
         self.tau=conf["tau"]
         self.use_prox=conf["use_prox"]
-        
+        self.quantize=conf["quantize"]
+        self.quant_bit=self.conf["quantize_level"]
+        if self.quantize:
+            print("quantize level",self.quant_bit)
+        else:
+            self.quant_bit=32
+            print("no quantization")
         base_zeros = [
             torch.zeros_like(p, requires_grad=False, device=self.device)
             for p in self.plists[0]
@@ -106,7 +113,6 @@ class SONATA:
             opt.zero_grad()
             self.x_2_lists[i]=(1-self.alpha)*ori_theta+self.alpha*torch.nn.utils.parameters_to_vector(self.pr.models[i].parameters()).detach().clone()
         return
-    
     def train(self, profiler=None):
         eval_every = self.pr.conf["metrics_config"]["evaluate_frequency"]
         oits = self.conf["outer_iterations"]
@@ -126,12 +132,12 @@ class SONATA:
                             self.plists[i][p].grad.detach().clone()
                         )
                         self.plists[i][p].grad.zero_()
+        self.total_bit_transfer=0
 
         # Optimization loop
         for k in range(oits):
             if k % eval_every == 0 or k == oits - 1:
                 self.pr.evaluate_metrics(at_end=(k == oits - 1))
-                
             self.pr.update_graph()
 
             # Compute graph weights
@@ -149,7 +155,12 @@ class SONATA:
                     sum=W[i,i]*self.x_2_lists[i]
                     # Neighbor updates
                     for j in neighs:
-                        sum+=W[i,j]*self.x_2_lists[j]
+                        recv_tensor=quantize_(self.x_2_lists[j],self.quant_bit)
+                        if self.quantize:
+                            recv_tensor=recv_tensor.half()
+                        self.total_bit_transfer+=get_n_bits(recv_tensor)
+                        sum+=W[i,j]*recv_tensor.float()
+                        # sum+=W[i,j]*quantize_(self.x_2_lists[j],self.quant_bit)
                     torch.nn.utils.vector_to_parameters(sum,self.pr.models[i].parameters()) 
             
                         
@@ -172,9 +183,14 @@ class SONATA:
                         self.ylists[i][p].add_(self.glists[i][p], alpha=-1.0)
                         
                         for j in neighs:
-                            self.ylists[i][p].add_(
-                                bak_ylist[j][p], alpha=W[i, j]
-                            )
+                            recv_tensor=quantize_(bak_ylist[j][p],self.quant_bit)
+                            if self.quantize:
+                                recv_tensor=recv_tensor.half()
+                            self.total_bit_transfer+=get_n_bits(recv_tensor)
+                            self.ylists[i][p].add_(recv_tensor.float(), alpha=W[i, j])
+                            # self.ylists[i][p].add_(
+                            #     quantize_(bak_ylist[j][p],self.quant_bit), alpha=W[i, j]
+                            # )
                             # self.ylists[i][p].add_(self.plists[j][p].grad, alpha=W[i, j])
                             # self.ylists[i][p].add_(self.glists[j][p], alpha=-W[i, j])
                         sum_ynorm += torch.norm(self.ylists[i][p]).item()
@@ -193,4 +209,8 @@ class SONATA:
 
             if profiler is not None:
                 profiler.step()
+        if self.quant_bit!=32:
+            print("Total bit transfer: ",self.total_bit_transfer)
+            print("Original bit transfer: ",int(self.total_bit_transfer*32/self.quant_bit))
+
         return
